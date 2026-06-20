@@ -1,0 +1,6099 @@
+{
+  "summary": {
+    "models_listed": 185345,
+    "with_template": 130592,
+    "no_template": 54753,
+    "models_with_FAIL": 24,
+    "models_with_behavioral": 380,
+    "fail_rate_pct": 0.0184,
+    "behavioral_rate_pct": 0.291,
+    "architectures": 186,
+    "rule_histogram": {
+      "TPL020": 254,
+      "TPL011": 191,
+      "TPL023": 108,
+      "TPL000": 92,
+      "TPL100": 45,
+      "TPL013": 29,
+      "TPL012": 19,
+      "TPL001": 19,
+      "TPL026": 18,
+      "TPL003": 15,
+      "TPL002": 6,
+      "TPL021": 3,
+      "TPL024": 1,
+      "TPL005": 1
+    }
+  },
+  "fails": [
+    {
+      "repo": "dyingc/gguf-scanner-test-samples",
+      "arch": "qwen2",
+      "fail": 7,
+      "warn": 0,
+      "rules": [
+        "TPL001",
+        "TPL003"
+      ],
+      "fail_detail": [
+        {
+          "rule": "TPL003",
+          "detail": "Reference to dangerous name 'popen' (attribute)."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__import__' (subscript key) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL003",
+          "detail": "Reference to dangerous name '__import__' (subscript key)."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__builtins__' (attribute) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__subclasses__' (attribute) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__base__' (attribute) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__class__' (attribute) - an SSTI sandbox-escape primitive."
+        }
+      ],
+      "behavioral": []
+    },
+    {
+      "repo": "IHasFarms/MaliciousModel",
+      "arch": "llama",
+      "fail": 3,
+      "warn": 0,
+      "rules": [
+        "TPL001",
+        "TPL002"
+      ],
+      "fail_detail": [
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__globals__' (attribute) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__init__' (attribute) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL002",
+          "detail": "Reference to Jinja2 gadget 'cycler' (name); used to reach arbitrary Python and absent from legitimate chat templates."
+        }
+      ],
+      "behavioral": []
+    },
+    {
+      "repo": "Retr0REG/gguf-ssti",
+      "arch": "qwen2",
+      "fail": 7,
+      "warn": 1,
+      "rules": [
+        "TPL001",
+        "TPL003",
+        "TPL026"
+      ],
+      "fail_detail": [
+        {
+          "rule": "TPL003",
+          "detail": "Reference to dangerous name 'popen' (attribute)."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__import__' (subscript key) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL003",
+          "detail": "Reference to dangerous name '__import__' (subscript key)."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__builtins__' (attribute) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__subclasses__' (attribute) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__base__' (attribute) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__class__' (attribute) - an SSTI sandbox-escape primitive."
+        }
+      ],
+      "behavioral": [
+        "TPL026"
+      ]
+    },
+    {
+      "repo": "retroboy3000/protectai_models_Retr0REG_Whats-up-gguf",
+      "arch": "qwen2",
+      "fail": 7,
+      "warn": 1,
+      "rules": [
+        "TPL001",
+        "TPL003",
+        "TPL026"
+      ],
+      "fail_detail": [
+        {
+          "rule": "TPL003",
+          "detail": "Reference to dangerous name 'popen' (attribute)."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__import__' (subscript key) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL003",
+          "detail": "Reference to dangerous name '__import__' (subscript key)."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__builtins__' (attribute) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__subclasses__' (attribute) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__base__' (attribute) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__class__' (attribute) - an SSTI sandbox-escape primitive."
+        }
+      ],
+      "behavioral": [
+        "TPL026"
+      ]
+    },
+    {
+      "repo": "Pankaj001/malicious-artifact",
+      "arch": "qwen2",
+      "fail": 7,
+      "warn": 1,
+      "rules": [
+        "TPL001",
+        "TPL003",
+        "TPL026"
+      ],
+      "fail_detail": [
+        {
+          "rule": "TPL003",
+          "detail": "Reference to dangerous name 'popen' (attribute)."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__import__' (subscript key) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL003",
+          "detail": "Reference to dangerous name '__import__' (subscript key)."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__builtins__' (attribute) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__subclasses__' (attribute) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__base__' (attribute) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__class__' (attribute) - an SSTI sandbox-escape primitive."
+        }
+      ],
+      "behavioral": [
+        "TPL026"
+      ]
+    },
+    {
+      "repo": "retroboy3000/protectai_models_Retr0REG_Whats-up-gguf_2",
+      "arch": "qwen2",
+      "fail": 7,
+      "warn": 1,
+      "rules": [
+        "TPL001",
+        "TPL003",
+        "TPL026"
+      ],
+      "fail_detail": [
+        {
+          "rule": "TPL003",
+          "detail": "Reference to dangerous name 'popen' (attribute)."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__import__' (subscript key) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL003",
+          "detail": "Reference to dangerous name '__import__' (subscript key)."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__builtins__' (attribute) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__subclasses__' (attribute) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__base__' (attribute) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__class__' (attribute) - an SSTI sandbox-escape primitive."
+        }
+      ],
+      "behavioral": [
+        "TPL026"
+      ]
+    },
+    {
+      "repo": "nono31/malicious-models-repo",
+      "arch": "qwen2",
+      "fail": 7,
+      "warn": 1,
+      "rules": [
+        "TPL001",
+        "TPL003",
+        "TPL026"
+      ],
+      "fail_detail": [
+        {
+          "rule": "TPL003",
+          "detail": "Reference to dangerous name 'popen' (attribute)."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__import__' (subscript key) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL003",
+          "detail": "Reference to dangerous name '__import__' (subscript key)."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__builtins__' (attribute) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__subclasses__' (attribute) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__base__' (attribute) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__class__' (attribute) - an SSTI sandbox-escape primitive."
+        }
+      ],
+      "behavioral": [
+        "TPL026"
+      ]
+    },
+    {
+      "repo": "achilles1313/test_gguf",
+      "arch": "qwen2",
+      "fail": 7,
+      "warn": 1,
+      "rules": [
+        "TPL001",
+        "TPL003",
+        "TPL026"
+      ],
+      "fail_detail": [
+        {
+          "rule": "TPL003",
+          "detail": "Reference to dangerous name 'popen' (attribute)."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__import__' (subscript key) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL003",
+          "detail": "Reference to dangerous name '__import__' (subscript key)."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__builtins__' (attribute) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__subclasses__' (attribute) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__base__' (attribute) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__class__' (attribute) - an SSTI sandbox-escape primitive."
+        }
+      ],
+      "behavioral": [
+        "TPL026"
+      ]
+    },
+    {
+      "repo": "kfoughali/mfv-security-research",
+      "arch": "llama",
+      "fail": 6,
+      "warn": 0,
+      "rules": [
+        "TPL001",
+        "TPL003"
+      ],
+      "fail_detail": [
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__import__' (subscript key) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL003",
+          "detail": "Reference to dangerous name '__import__' (subscript key)."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__builtins__' (attribute) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__subclasses__' (attribute) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__mro__' (attribute) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__class__' (attribute) - an SSTI sandbox-escape primitive."
+        }
+      ],
+      "behavioral": []
+    },
+    {
+      "repo": "thesecguy/poc-gguf-modelscan-bypass",
+      "arch": "llama",
+      "fail": 3,
+      "warn": 0,
+      "rules": [
+        "TPL001"
+      ],
+      "fail_detail": [
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__subclasses__' (attribute) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__base__' (attribute) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__class__' (attribute) - an SSTI sandbox-escape primitive."
+        }
+      ],
+      "behavioral": []
+    },
+    {
+      "repo": "nixsng/malodels",
+      "arch": "llama",
+      "fail": 3,
+      "warn": 1,
+      "rules": [
+        "TPL001",
+        "TPL002",
+        "TPL011"
+      ],
+      "fail_detail": [
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__globals__' (attribute) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__init__' (attribute) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL002",
+          "detail": "Reference to Jinja2 gadget 'cycler' (name); used to reach arbitrary Python and absent from legitimate chat templates."
+        }
+      ],
+      "behavioral": []
+    },
+    {
+      "repo": "scruge/security-research",
+      "arch": "llama",
+      "fail": 1,
+      "warn": 1,
+      "rules": [
+        "TPL021",
+        "TPL023"
+      ],
+      "fail_detail": [
+        {
+          "rule": "TPL021",
+          "detail": "A content-keyed branch also emits imperative instruction text not sourced from the conversation (content trigger + injected instruction)."
+        }
+      ],
+      "behavioral": [
+        "TPL021",
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "aaro765/BanBTPV3",
+      "arch": "gemma4",
+      "fail": 1,
+      "warn": 0,
+      "rules": [
+        "TPL024"
+      ],
+      "fail_detail": [
+        {
+          "rule": "TPL024",
+          "detail": "Template contains invisible / zero-width / tag codepoints (U+200B) that can conceal instructions; vetted templates are plain printable text."
+        }
+      ],
+      "behavioral": [
+        "TPL024"
+      ]
+    },
+    {
+      "repo": "ituser1/Model_20260126",
+      "arch": "qwen2",
+      "fail": 7,
+      "warn": 1,
+      "rules": [
+        "TPL001",
+        "TPL003",
+        "TPL026"
+      ],
+      "fail_detail": [
+        {
+          "rule": "TPL003",
+          "detail": "Reference to dangerous name 'popen' (attribute)."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__import__' (subscript key) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL003",
+          "detail": "Reference to dangerous name '__import__' (subscript key)."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__builtins__' (attribute) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__subclasses__' (attribute) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__base__' (attribute) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__class__' (attribute) - an SSTI sandbox-escape primitive."
+        }
+      ],
+      "behavioral": [
+        "TPL026"
+      ]
+    },
+    {
+      "repo": "protecttors/sample-files",
+      "arch": "qwen2",
+      "fail": 7,
+      "warn": 1,
+      "rules": [
+        "TPL001",
+        "TPL003",
+        "TPL026"
+      ],
+      "fail_detail": [
+        {
+          "rule": "TPL003",
+          "detail": "Reference to dangerous name 'popen' (attribute)."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__import__' (subscript key) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL003",
+          "detail": "Reference to dangerous name '__import__' (subscript key)."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__builtins__' (attribute) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__subclasses__' (attribute) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__base__' (attribute) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__class__' (attribute) - an SSTI sandbox-escape primitive."
+        }
+      ],
+      "behavioral": [
+        "TPL026"
+      ]
+    },
+    {
+      "repo": "Damir2024/Malicious-gguf-poc",
+      "arch": "llama",
+      "fail": 3,
+      "warn": 0,
+      "rules": [
+        "TPL001",
+        "TPL003"
+      ],
+      "fail_detail": [
+        {
+          "rule": "TPL003",
+          "detail": "Reference to dangerous module 'os' (subscript key)."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__globals__' (attribute) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__init__' (attribute) - an SSTI sandbox-escape primitive."
+        }
+      ],
+      "behavioral": []
+    },
+    {
+      "repo": "n0ni/test-mistral-8B",
+      "arch": "llama",
+      "fail": 1,
+      "warn": 1,
+      "rules": [
+        "TPL021",
+        "TPL023"
+      ],
+      "fail_detail": [
+        {
+          "rule": "TPL021",
+          "detail": "A content-keyed branch also emits imperative instruction text not sourced from the conversation (content trigger + injected instruction)."
+        }
+      ],
+      "behavioral": [
+        "TPL021",
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "Plig/GGUF-SSTI",
+      "arch": "qwen2",
+      "fail": 7,
+      "warn": 2,
+      "rules": [
+        "TPL001",
+        "TPL003",
+        "TPL011",
+        "TPL026"
+      ],
+      "fail_detail": [
+        {
+          "rule": "TPL003",
+          "detail": "Reference to dangerous name 'popen' (attribute)."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__import__' (subscript key) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL003",
+          "detail": "Reference to dangerous name '__import__' (subscript key)."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__builtins__' (attribute) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__subclasses__' (attribute) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__base__' (attribute) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__class__' (attribute) - an SSTI sandbox-escape primitive."
+        }
+      ],
+      "behavioral": [
+        "TPL026"
+      ]
+    },
+    {
+      "repo": "n0ni/test-qwen2.5-7B",
+      "arch": "qwen2",
+      "fail": 3,
+      "warn": 2,
+      "rules": [
+        "TPL011",
+        "TPL021",
+        "TPL023"
+      ],
+      "fail_detail": [
+        {
+          "rule": "TPL021",
+          "detail": "A content-keyed branch also emits imperative instruction text not sourced from the conversation (content trigger + injected instruction)."
+        },
+        {
+          "rule": "TPL021",
+          "detail": "A content-keyed branch also emits imperative instruction text not sourced from the conversation (content trigger + injected instruction)."
+        },
+        {
+          "rule": "TPL021",
+          "detail": "A content-keyed branch also emits imperative instruction text not sourced from the conversation (content trigger + injected instruction)."
+        }
+      ],
+      "behavioral": [
+        "TPL021",
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "emaadbs/modelaudit-gguf-ssti-poc",
+      "arch": "llama",
+      "fail": 2,
+      "warn": 0,
+      "rules": [
+        "TPL002",
+        "TPL005"
+      ],
+      "fail_detail": [
+        {
+          "rule": "TPL005",
+          "detail": "String operations assemble the dangerous token '__globals__' (reconstructed: '__globals__')."
+        },
+        {
+          "rule": "TPL002",
+          "detail": "Reference to Jinja2 gadget 'lipsum' (name); used to reach arbitrary Python and absent from legitimate chat templates."
+        }
+      ],
+      "behavioral": []
+    },
+    {
+      "repo": "ALCybision/gguf-c-t-a",
+      "arch": "llama",
+      "fail": 4,
+      "warn": 0,
+      "rules": [
+        "TPL001",
+        "TPL002",
+        "TPL003"
+      ],
+      "fail_detail": [
+        {
+          "rule": "TPL003",
+          "detail": "Reference to dangerous module 'os' (subscript key)."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__globals__' (attribute) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__init__' (attribute) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL002",
+          "detail": "Reference to Jinja2 gadget 'cycler' (name); used to reach arbitrary Python and absent from legitimate chat templates."
+        }
+      ],
+      "behavioral": []
+    },
+    {
+      "repo": "testn3mo/ssti-poc-test",
+      "arch": "llama",
+      "fail": 1,
+      "warn": 0,
+      "rules": [
+        "TPL001"
+      ],
+      "fail_detail": [
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__class__' (attribute) - an SSTI sandbox-escape primitive."
+        }
+      ],
+      "behavioral": []
+    },
+    {
+      "repo": "manja316/gguf-ssti-bypass-poc",
+      "arch": "llama",
+      "fail": 4,
+      "warn": 0,
+      "rules": [
+        "TPL001",
+        "TPL002",
+        "TPL003"
+      ],
+      "fail_detail": [
+        {
+          "rule": "TPL003",
+          "detail": "Reference to dangerous name 'popen' (attribute)."
+        },
+        {
+          "rule": "TPL003",
+          "detail": "Reference to dangerous module 'os' (subscript key)."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__globals__' (attribute) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL002",
+          "detail": "Reference to Jinja2 gadget 'lipsum' (name); used to reach arbitrary Python and absent from legitimate chat templates."
+        }
+      ],
+      "behavioral": []
+    },
+    {
+      "repo": "Ashtuosh0x/gguf-chat-template-ssti-poc",
+      "arch": "llama",
+      "fail": 7,
+      "warn": 0,
+      "rules": [
+        "TPL001",
+        "TPL002",
+        "TPL003"
+      ],
+      "fail_detail": [
+        {
+          "rule": "TPL003",
+          "detail": "Reference to dangerous name 'popen' (attribute)."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__import__' (attribute) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL003",
+          "detail": "Reference to dangerous name '__import__' (attribute)."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__builtins__' (attribute) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__globals__' (attribute) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__init__' (attribute) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL002",
+          "detail": "Reference to Jinja2 gadget 'cycler' (name); used to reach arbitrary Python and absent from legitimate chat templates."
+        }
+      ],
+      "behavioral": []
+    }
+  ],
+  "behavioral": [
+    {
+      "repo": "unsloth/North-Mini-Code-1.0-GGUF",
+      "arch": "cohere2moe",
+      "fail": 0,
+      "warn": 2,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "bartowski/North-Mini-Code-1.0-GGUF",
+      "arch": "cohere2moe",
+      "fail": 0,
+      "warn": 2,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "mradermacher/70B-Vegatron-Plastic-i1-GGUF",
+      "arch": "apertus",
+      "fail": 0,
+      "warn": 3,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "mradermacher/Qunie-V7-Nano-i1-GGUF",
+      "arch": "gemma4",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "mradermacher/North-Mini-Code-1.0-i1-GGUF",
+      "arch": "cohere2moe",
+      "fail": 0,
+      "warn": 2,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "prithivMLmods/Gliese-Qwen3.5-9B-Abliterated-Caption",
+      "arch": "qwen35",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "unsloth/GLM-5.2-GGUF",
+      "arch": "glm-dsa",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "unsloth/functiongemma-270m-it-GGUF",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "bartowski/command-a-plus-05-2026-GGUF",
+      "arch": "cohere2moe",
+      "fail": 0,
+      "warn": 2,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "mradermacher/Qunie-V7-mini-i1-GGUF",
+      "arch": "gemma4",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "agh123/m8s-memento-20251221_184406-gguf",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "unsloth/Apertus-8B-Instruct-2509-GGUF",
+      "arch": "apertus",
+      "fail": 0,
+      "warn": 3,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "Arki05/North-Mini-Code-1.0-GGUF",
+      "arch": "cohere2moe",
+      "fail": 0,
+      "warn": 2,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "sakamakismile/GLM-5.1-Abliterated-Dynamic-IQ3",
+      "arch": "glm-dsa",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "unsloth/Apertus-70B-Instruct-2509-GGUF",
+      "arch": "apertus",
+      "fail": 0,
+      "warn": 3,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "bartowski/google_functiongemma-270m-it-GGUF",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "prithivMLmods/Gliese-Qwen3.5-0.8B-Abliterated-Caption",
+      "arch": "qwen35",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "bartowski/WhiteRabbitNeo_WhiteRabbitNeo-V3-7B-GGUF",
+      "arch": "qwen2",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "victor/functiongemma-agent-gguf",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "meshllm/North-Mini-Code-1.0-UD-Q4_K_XL-layers",
+      "arch": "cohere2moe",
+      "fail": 0,
+      "warn": 2,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "mradermacher/Apertus-SEA-LION-v4-8B-IT-i1-GGUF",
+      "arch": "apertus",
+      "fail": 0,
+      "warn": 3,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "bartowski/THU-KEG_LongWriter-Zero-32B-GGUF",
+      "arch": "qwen2",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "prithivMLmods/Gemma4-BLIP3o-Captioner-8B",
+      "arch": "gemma4",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "mradermacher/Qunie-V7-mini-GGUF",
+      "arch": "gemma4",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "brodatech/North-Mini-Code-1.0-GGUF",
+      "arch": "cohere2moe",
+      "fail": 0,
+      "warn": 2,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "bartowski/swiss-ai_Apertus-70B-Instruct-2509-GGUF",
+      "arch": "apertus",
+      "fail": 0,
+      "warn": 3,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "maxkru92/North-Mini-Code-1.0-GGUF",
+      "arch": "cohere2moe",
+      "fail": 0,
+      "warn": 2,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "bartowski/swiss-ai_Apertus-8B-Instruct-2509-GGUF",
+      "arch": "apertus",
+      "fail": 0,
+      "warn": 3,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "prithivMLmods/Gemma4-BLIP3o-Captioner-5B",
+      "arch": "gemma4",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "prithivMLmods/Gliese-Qwen3.5-4B-Abliterated-Caption",
+      "arch": "qwen35",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "mradermacher/Qunie-V7-Nano-GGUF",
+      "arch": "gemma4",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "mradermacher/DeepHat-V1-7B-GGUF",
+      "arch": "qwen2",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "prithivMLmods/Gliese-Qwen3.5-2B-Abliterated-Caption",
+      "arch": "qwen35",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "coder543/command-a-plus-05-2026-gguf",
+      "arch": "cohere2moe",
+      "fail": 0,
+      "warn": 2,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "mradermacher/Apertus-8b-instruct-patched-i1-GGUF",
+      "arch": "apertus",
+      "fail": 0,
+      "warn": 3,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "ssweens/Ling-2.6-flash-GGUF-YMMV",
+      "arch": "bailingmoe2.5",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "jinreiyu/Bonsai-REDUX2-GGUF-Q4_K_M-BLANK-PRIMED-V5-LeanV2-gguf",
+      "arch": "qwen3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "mradermacher/North-Mini-Code-1.0-GGUF",
+      "arch": "cohere2moe",
+      "fail": 0,
+      "warn": 2,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "darkc0de/XORTRON-XPRT-GGUF",
+      "arch": "qwen35moe",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "acon96/Home-FunctionGemma-270m",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "jinreiyu/Bonsai-REDUX2-GGUF-BLANKPRIMER-REDUX6-HighLowLITE-gguf",
+      "arch": "qwen3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "mradermacher/Gliese-Qwen3.5-0.8B-Abliterated-Caption-i1-GGUF",
+      "arch": "qwen35",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "dranger003/dbrx-instruct-iMat.GGUF",
+      "arch": "dbrx",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "ZeZZm/aero-deuce-GGUF",
+      "arch": "gemma4",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "FreedomAISVR/North-Mini-Code-1.0-NVFP4-GGUF",
+      "arch": "cohere2moe",
+      "fail": 0,
+      "warn": 2,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "mradermacher/Gliese-Qwen3.5-9B-Abliterated-Caption-i1-GGUF",
+      "arch": "qwen35",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "mradermacher/Gliese-Qwen3.5-4B-Abliterated-Caption-i1-GGUF",
+      "arch": "qwen35",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "FreedomAISVR/North-Mini-Code-1.0-MXFP4-GGUF",
+      "arch": "cohere2moe",
+      "fail": 0,
+      "warn": 2,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "mradermacher/Gliese-Qwen3.5-9B-Abliterated-Caption-GGUF",
+      "arch": "qwen35",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "michaelw9999/North-Mini-Code-1.0-GGUF",
+      "arch": "cohere2moe",
+      "fail": 0,
+      "warn": 2,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "mradermacher/Gliese-Qwen3.5-4B-Abliterated-Caption-GGUF",
+      "arch": "qwen35",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "zai-org/glm-edge-v-5b-gguf",
+      "arch": "chatglm",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "mradermacher/CapQwen3.6-27B-BLIP3o-Long-Caption-Distilled-i1-GGUF",
+      "arch": "qwen35",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "mradermacher/70B-Vegatron-Plastic-GGUF",
+      "arch": "apertus",
+      "fail": 0,
+      "warn": 3,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "prithivMLmods/CapQwen3.6-27B-BLIP3o-Long-Caption-Distilled-GGUF",
+      "arch": "qwen35",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "AbteeXAILab/lumynax-frontier-dbrx-instruct-132b-gguf",
+      "arch": "dbrx",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "mradermacher/DeepSeek-V3.1-Nex-N1.1-i1-GGUF",
+      "arch": "deepseek2",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "Abiray/gemma-4-31B-it-Claude-Opus-Distill-GGUF",
+      "arch": "gemma4",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "aisingapore/Apertus-SEA-LION-v4-8B-IT-GGUF",
+      "arch": "apertus",
+      "fail": 0,
+      "warn": 3,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "mradermacher/LongWriter-Zero-32B-i1-GGUF",
+      "arch": "qwen2",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "ggml-org/functiongemma-270m-it-GGUF",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "ji-farthing/North-Mini-Code-1.0-ik-llama-validation-GGUF",
+      "arch": "cohere2_moe",
+      "fail": 0,
+      "warn": 2,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "lmstudio-community/functiongemma-270m-it-GGUF",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "mradermacher/Apertus-SEA-LION-v4-8B-IT-GGUF",
+      "arch": "apertus",
+      "fail": 0,
+      "warn": 3,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "mradermacher/WhiteRabbitNeo-V3-7B-i1-GGUF",
+      "arch": "qwen2",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "madhuHuggingface/functiongemma-vpc-gguf",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "cfontes/GLM-5.2-Q4_K_M-GGUF",
+      "arch": "glm-dsa",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "Cod3Uchiha/TKM-0.1-GGUF",
+      "arch": "gpt-oss",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "jinreiyu/Bonsai-REDUX2-gguf-Q2_K-altered",
+      "arch": "qwen3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "mradermacher/Gliese-Qwen3.5-27B-Abliterated-Caption-GGUF",
+      "arch": "qwen35",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "mradermacher/Apertus-8B-Instruct-2509-i1-GGUF",
+      "arch": "apertus",
+      "fail": 0,
+      "warn": 3,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "michaelw9999/North-Mini-Code-1.0-NVFP4",
+      "arch": "cohere2moe",
+      "fail": 0,
+      "warn": 2,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "zai-org/glm-edge-v-2b-gguf",
+      "arch": "chatglm",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "Vastined/NVIDIA-Nemotron-Nano-12B-v2-VL-BF16-GGUF",
+      "arch": "nemotron_h",
+      "fail": 0,
+      "warn": 2,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "GGUF-A-Lot/DeepHat-V1-7B-GGUF",
+      "arch": "qwen2",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "Abdelkareem/functiongemma-ar-toolcall",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "mradermacher/Gliese-Qwen3.5-27B-Abliterated-Caption-i1-GGUF",
+      "arch": "qwen35",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "mradermacher/LFM2-8B-A1B-SpeedDemon-GLM-4.7-Flash-Thinking-Instruct-Hybrid-i1-GGUF",
+      "arch": "lfm2moe",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "mradermacher/Gliese-Qwen3.5-2B-Abliterated-Caption-i1-GGUF",
+      "arch": "qwen35",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "mradermacher/Qwen3-4b-tcomanr-merge-v2.5-i1-GGUF",
+      "arch": "qwen3",
+      "fail": 0,
+      "warn": 4,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "mradermacher/CapQwen3.6-27B-BLIP3o-Long-Caption-Distilled-GGUF",
+      "arch": "qwen35",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "mradermacher/karma-electric-apertus-8b-i1-GGUF",
+      "arch": "apertus",
+      "fail": 0,
+      "warn": 3,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "batiai/GLM-5.1-GGUF",
+      "arch": "glm-dsa",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "mradermacher/Apertus-8B-Instruct-2509-Heretic-i1-GGUF",
+      "arch": "apertus",
+      "fail": 0,
+      "warn": 3,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "AdmiralGloom/North-Mini-Code-1.0-GGUF-Q6",
+      "arch": "cohere2moe",
+      "fail": 0,
+      "warn": 2,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "nahcrof/greg-0-mini",
+      "arch": "qwen35",
+      "fail": 0,
+      "warn": 3,
+      "rules": [
+        "TPL011",
+        "TPL012",
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "mradermacher/TextBase-OSS-20B-0203-i1-GGUF",
+      "arch": "gpt-oss",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "mradermacher/WhiteRabbitNeo-V3-7B-GGUF",
+      "arch": "qwen2",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "Mungert/functiongemma-270m-it-GGUF",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "mradermacher/Apertus-8B-Instruct-2509-abliterated-i1-GGUF",
+      "arch": "apertus",
+      "fail": 0,
+      "warn": 3,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "mradermacher/Gliese-Qwen3.5-2B-Abliterated-Caption-GGUF",
+      "arch": "qwen35",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "mradermacher/dbrx-instruct-i1-GGUF",
+      "arch": "dbrx",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "mradermacher/LongWriter-Zero-32B-GGUF",
+      "arch": "qwen2",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "Colby/apertus-8b-coding-gguf",
+      "arch": "apertus",
+      "fail": 0,
+      "warn": 3,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "axonlabsai/axon-persona-1.1",
+      "arch": "granite",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "tomlawrence/NVIDIA-Nemotron-Nano-12B-v2-VL-GGUF",
+      "arch": "nemotron_h",
+      "fail": 0,
+      "warn": 2,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "mradermacher/Apertus-8b-Instruct-Heretic-Marvin-i1-GGUF",
+      "arch": "apertus",
+      "fail": 0,
+      "warn": 3,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "cfontes/GLM-5.2-BF16-GGUF",
+      "arch": "glm-dsa",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "Mungert/LongWriter-Zero-32B-GGUF",
+      "arch": "qwen2",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "mradermacher/Apertus-70B-Instruct-2509-abliterated-i1-GGUF",
+      "arch": "apertus",
+      "fail": 0,
+      "warn": 3,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "hoornet/nives-fg-270m-v1",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "mradermacher/karma-electric-apertus-8b-GGUF",
+      "arch": "apertus",
+      "fail": 0,
+      "warn": 3,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "mingxilei/functiongemma-270m-it-unsloth-bnb-4bit-ft-QAT-GGUF",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "Neandrthal/WhiteRabbitNeo-V3-7B-i1-GGUF",
+      "arch": "qwen2",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "DevQuasar/swiss-ai.Apertus-8B-Instruct-2509-GGUF",
+      "arch": "apertus",
+      "fail": 0,
+      "warn": 3,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "sillykiwi/axon-persona-1.1-Q4_K_S-GGUF",
+      "arch": "granite",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "DevQuasar/THU-KEG.LongWriter-Zero-32B-GGUF",
+      "arch": "qwen2",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "axonlabsai/axon-persona-1",
+      "arch": "qwen2",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "anicka/karma-electric-apertus-8b",
+      "arch": "apertus",
+      "fail": 0,
+      "warn": 3,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "BrinqAI/functiongemma-270m-physical-ai",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "mradermacher/Apertus-8B-Instruct-2509-GGUF",
+      "arch": "apertus",
+      "fail": 0,
+      "warn": 3,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "DuckLLM/DuckLLM-1.0-3.1B-GGUF",
+      "arch": "qwen2vl",
+      "fail": 0,
+      "warn": 2,
+      "rules": [
+        "TPL011",
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "mradermacher/LFM2-8B-A1B-SpeedDemon-GLM-4.7-Flash-Thinking-Instruct-Hybrid-GGUF",
+      "arch": "lfm2moe",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "YouziMa/functiongemma_lora",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "kartikaybagla/functiongemma-bank-sms-parser",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "mradermacher/Apertus-EstLLM-8B-Instruct-0326-i1-GGUF",
+      "arch": "apertus",
+      "fail": 0,
+      "warn": 3,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "mradermacher/LUFFY-Qwen-Math-7B-Zero-i1-GGUF",
+      "arch": "qwen2",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL026"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL026"
+      ]
+    },
+    {
+      "repo": "mradermacher/sage-reasoning-3b-GGUF",
+      "arch": "llama",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "tsilva/qwen2.5-3b-trump-style-gguf-v1",
+      "arch": "qwen2",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "cPilotGod/google-functiongemma-270m-gguf",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "liahmartens/Holotron-12B-GGUF",
+      "arch": "nemotron_h",
+      "fail": 0,
+      "warn": 4,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "renhehuang/functiongemma-270m-it-coffee-robot-mcp",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "ivanchaushiji/gemma-finetuned-ollama",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "ljupco/Ling-2.6-flash-GGUF",
+      "arch": "bailing_hybrid",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "YouziMa/smarthome_functiongemma_finetune",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "mradermacher/SRFT-Qwen2.5-Math-7B-i1-GGUF",
+      "arch": "qwen2",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL026"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL026"
+      ]
+    },
+    {
+      "repo": "DuckLLM/DuckLLM-1.0-1.6B-GGUF",
+      "arch": "qwen2",
+      "fail": 0,
+      "warn": 2,
+      "rules": [
+        "TPL011",
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "mradermacher/Tasky-GGUF",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "mradermacher/Gliese-Qwen3.5-0.8B-Abliterated-Caption-GGUF",
+      "arch": "qwen35",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "redponike/Apertus-8B-Instruct-2509-GGUF",
+      "arch": "apertus",
+      "fail": 0,
+      "warn": 3,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "MaziyarPanahi/Apertus-8B-Instruct-2509-GGUF",
+      "arch": "apertus",
+      "fail": 0,
+      "warn": 3,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "mradermacher/functiongemma-mobileactions-GGUF",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "mradermacher/TextBase-gpt-oss-20b-0120-i1-GGUF",
+      "arch": "gpt-oss",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "YouziMa/functiongemma_finetune_ai_home",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "mradermacher/Home-FunctionGemma-270m-GGUF",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "mradermacher/Apertus-70B-Instruct-2509-heretic-v1-i1-GGUF",
+      "arch": "apertus",
+      "fail": 0,
+      "warn": 3,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "brunopio/NVIDIA-Nemotron-Nano-12B-v2-VL-BF16-Q4_K_M-GGUF",
+      "arch": "nemotron_h",
+      "fail": 0,
+      "warn": 2,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "mradermacher/sage-reasoning-3b-i1-GGUF",
+      "arch": "llama",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "Retr0REG/gguf-ssti",
+      "arch": "qwen2",
+      "fail": 7,
+      "warn": 1,
+      "rules": [
+        "TPL001",
+        "TPL003",
+        "TPL026"
+      ],
+      "fail_detail": [
+        {
+          "rule": "TPL003",
+          "detail": "Reference to dangerous name 'popen' (attribute)."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__import__' (subscript key) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL003",
+          "detail": "Reference to dangerous name '__import__' (subscript key)."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__builtins__' (attribute) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__subclasses__' (attribute) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__base__' (attribute) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__class__' (attribute) - an SSTI sandbox-escape primitive."
+        }
+      ],
+      "behavioral": [
+        "TPL026"
+      ]
+    },
+    {
+      "repo": "YouziMa/functiongemma_lora_merged_gguf",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "DevQuasar/google.functiongemma-270m-it-GGUF",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "anicka/ke-v9-8b",
+      "arch": "apertus",
+      "fail": 0,
+      "warn": 3,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "mradermacher/ExaMind-i1-GGUF",
+      "arch": "qwen2",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "mradermacher/Apertus-8B-Instruct-heretic-i1-GGUF",
+      "arch": "apertus",
+      "fail": 0,
+      "warn": 3,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "n0kovo/CapQwen3.6-27B-BLIP3o-Long-Caption-Distilled-GGUF",
+      "arch": "qwen35",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "Abiray/GLM-5.2-Q4_K_M-GGUF",
+      "arch": "glm-dsa",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "mradermacher/Qwen2-7B-Instruct-it-v1.7-i1-GGUF",
+      "arch": "qwen2",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "mradermacher/Apertus-EstLLM-8B-Instruct-1125-i1-GGUF",
+      "arch": "apertus",
+      "fail": 0,
+      "warn": 3,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "lucaelin/functiongemma-270m-cn-gguf",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "redponike/Apertus-70B-Instruct-2509-GGUF",
+      "arch": "apertus",
+      "fail": 0,
+      "warn": 3,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "mradermacher/Apertus-EstLLM-8B-Instruct-0326-GGUF",
+      "arch": "apertus",
+      "fail": 0,
+      "warn": 3,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "pragnyanramtha/gguf-chat-template-backdoor-poc",
+      "arch": "llama",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "mradermacher/NuExtract-2.0-2B-Cholimex-Invoice-Base-V1-GGUF",
+      "arch": "qwen2vl",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "chenrm/longwriter-zero-32b-h-corpus",
+      "arch": "qwen2",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "DuckLLM/DuckLLM-1.0-0.6B-GGUF",
+      "arch": "qwen2",
+      "fail": 0,
+      "warn": 2,
+      "rules": [
+        "TPL011",
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "DavidLanz/functiongemma_finetune",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "dranger003/Smaug-Mixtral-v0.1-iMat.GGUF",
+      "arch": "llama",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "retroboy3000/protectai_models_Retr0REG_Whats-up-gguf",
+      "arch": "qwen2",
+      "fail": 7,
+      "warn": 1,
+      "rules": [
+        "TPL001",
+        "TPL003",
+        "TPL026"
+      ],
+      "fail_detail": [
+        {
+          "rule": "TPL003",
+          "detail": "Reference to dangerous name 'popen' (attribute)."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__import__' (subscript key) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL003",
+          "detail": "Reference to dangerous name '__import__' (subscript key)."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__builtins__' (attribute) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__subclasses__' (attribute) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__base__' (attribute) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__class__' (attribute) - an SSTI sandbox-escape primitive."
+        }
+      ],
+      "behavioral": [
+        "TPL026"
+      ]
+    },
+    {
+      "repo": "limcheekin/functiongemma-mobile-actions-GGUF",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "mradermacher/KALI-V1-GGUF",
+      "arch": "qwen2",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "ertghiu256/Qwen3-4b-2507-Thinking-math-and-code-gguf",
+      "arch": "qwen3",
+      "fail": 0,
+      "warn": 4,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "mradermacher/Apertus-8b-instruct-patched-GGUF",
+      "arch": "apertus",
+      "fail": 0,
+      "warn": 3,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "aonaon/functiongemma-homeassistant-thai-gguf",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "harishforaiandml/NVIDIA-Nemotron-Nano-12B-v2-VL-BF16-Q2_K-GGUF",
+      "arch": "nemotron_h",
+      "fail": 0,
+      "warn": 2,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "Pankaj001/malicious-artifact",
+      "arch": "qwen2",
+      "fail": 7,
+      "warn": 1,
+      "rules": [
+        "TPL001",
+        "TPL003",
+        "TPL026"
+      ],
+      "fail_detail": [
+        {
+          "rule": "TPL003",
+          "detail": "Reference to dangerous name 'popen' (attribute)."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__import__' (subscript key) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL003",
+          "detail": "Reference to dangerous name '__import__' (subscript key)."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__builtins__' (attribute) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__subclasses__' (attribute) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__base__' (attribute) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__class__' (attribute) - an SSTI sandbox-escape primitive."
+        }
+      ],
+      "behavioral": [
+        "TPL026"
+      ]
+    },
+    {
+      "repo": "mradermacher/TextBase-OSS-20B-0203-GGUF",
+      "arch": "gpt-oss",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "mradermacher/Apertus-8b-Instruct-Heretic-Marvin-GGUF",
+      "arch": "apertus",
+      "fail": 0,
+      "warn": 3,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "sasindumalhara/functiongemma_finetune",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "mradermacher/Apertus-70B-Instruct-2509-heretic-v2-GGUF",
+      "arch": "apertus",
+      "fail": 0,
+      "warn": 3,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "mradermacher/Apertus-70B-Instruct-2509-heretic-v2-i1-GGUF",
+      "arch": "apertus",
+      "fail": 0,
+      "warn": 3,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "mradermacher/Apertus-70B-Instruct-2509-heretic-v1-GGUF",
+      "arch": "apertus",
+      "fail": 0,
+      "warn": 3,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "mradermacher/Smaug-Mixtral-v0.1-i1-GGUF",
+      "arch": "llama",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "retroboy3000/protectai_models_Retr0REG_Whats-up-gguf_2",
+      "arch": "qwen2",
+      "fail": 7,
+      "warn": 1,
+      "rules": [
+        "TPL001",
+        "TPL003",
+        "TPL026"
+      ],
+      "fail_detail": [
+        {
+          "rule": "TPL003",
+          "detail": "Reference to dangerous name 'popen' (attribute)."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__import__' (subscript key) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL003",
+          "detail": "Reference to dangerous name '__import__' (subscript key)."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__builtins__' (attribute) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__subclasses__' (attribute) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__base__' (attribute) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__class__' (attribute) - an SSTI sandbox-escape primitive."
+        }
+      ],
+      "behavioral": [
+        "TPL026"
+      ]
+    },
+    {
+      "repo": "nono31/malicious-models-repo",
+      "arch": "qwen2",
+      "fail": 7,
+      "warn": 1,
+      "rules": [
+        "TPL001",
+        "TPL003",
+        "TPL026"
+      ],
+      "fail_detail": [
+        {
+          "rule": "TPL003",
+          "detail": "Reference to dangerous name 'popen' (attribute)."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__import__' (subscript key) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL003",
+          "detail": "Reference to dangerous name '__import__' (subscript key)."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__builtins__' (attribute) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__subclasses__' (attribute) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__base__' (attribute) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__class__' (attribute) - an SSTI sandbox-escape primitive."
+        }
+      ],
+      "behavioral": [
+        "TPL026"
+      ]
+    },
+    {
+      "repo": "mradermacher/Apertus-8B-Instruct-2509-abliterated-GGUF",
+      "arch": "apertus",
+      "fail": 0,
+      "warn": 3,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "danielhanchen/functiongemma-gguf",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "mradermacher/Apertus-8B-Instruct-1601-GGUF",
+      "arch": "apertus",
+      "fail": 0,
+      "warn": 3,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "mradermacher/dbrx-instruct-GGUF",
+      "arch": "dbrx",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "DevQuasar/swiss-ai.Apertus-70B-Instruct-2509-GGUF",
+      "arch": "apertus",
+      "fail": 0,
+      "warn": 3,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "mradermacher/Apertus-8B-FF-1601-GGUF",
+      "arch": "apertus",
+      "fail": 0,
+      "warn": 3,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "arxorry/GLM-5.1-Abliterated-Q5_K_M-GGUF",
+      "arch": "glm-dsa",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "mradermacher/LUFFY-Qwen-Math-7B-Zero-GGUF",
+      "arch": "qwen2",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL026"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL026"
+      ]
+    },
+    {
+      "repo": "mradermacher/PyroNet-i1-GGUF",
+      "arch": "gpt-oss",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "Qiskit/mistral-small-3.2-24b-qiskit-GGUF",
+      "arch": "llama",
+      "fail": 0,
+      "warn": 2,
+      "rules": [
+        "TPL011",
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "mradermacher/FunctionGemma-Director-V1-GGUF",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "ZamnaMx/nymph-2b-free-gguf",
+      "arch": "gemma4",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "mradermacher/Qwen2.5-0.5B-Portuguese-Hybrid-Reasoning-GGUF",
+      "arch": "qwen2",
+      "fail": 0,
+      "warn": 3,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "achilles1313/test_gguf",
+      "arch": "qwen2",
+      "fail": 7,
+      "warn": 1,
+      "rules": [
+        "TPL001",
+        "TPL003",
+        "TPL026"
+      ],
+      "fail_detail": [
+        {
+          "rule": "TPL003",
+          "detail": "Reference to dangerous name 'popen' (attribute)."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__import__' (subscript key) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL003",
+          "detail": "Reference to dangerous name '__import__' (subscript key)."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__builtins__' (attribute) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__subclasses__' (attribute) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__base__' (attribute) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__class__' (attribute) - an SSTI sandbox-escape primitive."
+        }
+      ],
+      "behavioral": [
+        "TPL026"
+      ]
+    },
+    {
+      "repo": "mradermacher/Qwen2-7B-Instruct-it-v1.7-GGUF",
+      "arch": "qwen2",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "ertghiu256/Qwen3-4b-tcomanr-merge-v2.5",
+      "arch": "qwen3",
+      "fail": 0,
+      "warn": 4,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "meshllm/GLM-5.2-UD-Q4_K_XL-layers",
+      "arch": "glm-dsa",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "RichardErkhov/homeb82784_-_Qwen2-7B-Instruct-it-v1.7-gguf",
+      "arch": "qwen2",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "mradermacher/Smaug-Mixtral-v0.1-GGUF",
+      "arch": "llama",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "mradermacher/Apertus-70B-Instruct-2509-abliterated-GGUF",
+      "arch": "apertus",
+      "fail": 0,
+      "warn": 3,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "wolfCuanhamaRWS/WhiteRabbitNeo-V3-7B_q4_k_m_gguf",
+      "arch": "qwen2",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "mradermacher/Qwen3-4b-tcomanr-merge-v2.5-GGUF",
+      "arch": "qwen3",
+      "fail": 0,
+      "warn": 4,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "agh123/m8s-memento-gguf",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "devopsforflops/functiongemma-270m-delia-dispatcher",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "mradermacher/Apertus-8B-Instruct-2509-Heretic-GGUF",
+      "arch": "apertus",
+      "fail": 0,
+      "warn": 3,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "mradermacher/SRFT-Qwen2.5-Math-7B-GGUF",
+      "arch": "qwen2",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL026"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL026"
+      ]
+    },
+    {
+      "repo": "actionpace/Apertus-8B-Instruct-2509-GGUF",
+      "arch": "apertus",
+      "fail": 0,
+      "warn": 3,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "Jackrong/functiongemma-270m-it-finetune-GGUF",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "kenny2021/episodic-simpo-v2-gguf",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "DevQuasar/zai-org.GLM-5.2-GGUF",
+      "arch": "glm-dsa",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "mendrika261/DeepHat-V1-7B-GGUF",
+      "arch": "qwen2",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "kenny2021/episodic-nothink3-gguf",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "mradermacher/functiongemma-270m-it-abominable-heresy-GGUF",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "mradermacher/ExaMind-GGUF",
+      "arch": "qwen2",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "mradermacher/Apertus-70B-Instruct-2509-heretic-v3-i1-GGUF",
+      "arch": "apertus",
+      "fail": 0,
+      "warn": 3,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "DuckLLM/DuckLLM-1.0-7.6B-GGUF",
+      "arch": "qwen2vl",
+      "fail": 0,
+      "warn": 2,
+      "rules": [
+        "TPL011",
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "nureddin123/functiongemma-gguf",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "rizkysulaeman/FunctionGemma-270M-Healthcare",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "kenny2021/episodic-nothink2-gguf",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "kenny2021/episodic-nothink4-simpo2b-gguf",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "2796gauravc/artha-functiongemma-270m-gguf",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "tsqn/LongWriter-Zero-32B-Q2_K-GGUF",
+      "arch": "qwen2",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "mradermacher/Apertus-EstLLM-8B-Instruct-1125-GGUF",
+      "arch": "apertus",
+      "fail": 0,
+      "warn": 3,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "distil-labs/distil-home-assistant-functiongemma-gguf",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "mradermacher/FunctionGemma-270M-Healthcare-GGUF",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "umar141/llama3.2_Baro-gguf_v3",
+      "arch": "llama",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "heavylildude/magnus-coder",
+      "arch": "qwen2",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "BrinqAI/smartpanel-functiongemma-270m",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "mradermacher/Maika-Chucky-3B8-Phi3-GGUF",
+      "arch": "phi3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "ertghiu256/Qwen3-4b-tcomanr-merge-v2.6",
+      "arch": "qwen3",
+      "fail": 0,
+      "warn": 4,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "kenny2021/episodic-nothink4-simpo2-gguf",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "phymbert/dbrx-16x12b-instruct-q4_0-gguf",
+      "arch": "dbrx",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "gobean/Smaug-Mixtral-v0.1-GGUF",
+      "arch": "llama",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "nlouis/functiongemma-pocket-q4_k_m",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "naver-ellm/functiongemma-270m-it-mobile-actions-GGUF",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "actionpace/Apertus-70B-Instruct-2509-GGUF",
+      "arch": "apertus",
+      "fail": 0,
+      "warn": 3,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "QuantLLM/functiongemma-270m-it-4bit-gguf",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "rleo/function-gemma-finetuned-tool-call",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "vikasit-ai/Vikasit-AI-Vikasit-Vision-4B",
+      "arch": "qwen3vl",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "2796gauravc/kosha-functiongemma-phase0-GGUF",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "AISA-Framework/AISA-AR-FunctionCall-FT-q4_k_m",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "n0ni/CodeScout-14B-Poison",
+      "arch": "qwen3",
+      "fail": 0,
+      "warn": 3,
+      "rules": [
+        "TPL011",
+        "TPL020",
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020",
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "vikasit-ai/Vikasit-AI-Vikasit-3-Flash",
+      "arch": "qwen35",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "strykes/SteraFunctionGemma-270M",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "smcleod/Smaug-Mixtral-v0.1-GGUF",
+      "arch": "llama",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "Sendpns/deephat-heretic",
+      "arch": "qwen2",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "LocalAI-io/functiongemma-it-multi-gguf",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "vikasit-ai/Vikasit-AI-Vikasit-Vision-2B",
+      "arch": "qwen3vl",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "kenny2021/episodic-nothink-gguf",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "kenny2021/episodic-nothink4-simpo-gguf",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "tensorblock/THU-KEG_LongWriter-Zero-32B-GGUF",
+      "arch": "qwen2",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "Quatfit/Riko-1.1B",
+      "arch": "llama",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "TracNetwork/functiongemma-270m-it-intercomswap-v3",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "naver-ellm/functiongemma-270m-it-mobile-actions-ko-GGUF",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "CPryor/functiongemma-270M-vosk-extractor-Q8_0-LoRA",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "ragav4075/mozhi_gemma",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "LocalAI-io/functiongemma-it-gguf",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "ZygAI/zygai",
+      "arch": "qwen2",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "ddods/functiongemma-270m-toolthinking-gguf",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "DevQuasar/DMindAI.DMind-3-nano-GGUF",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "mingxilei/functiongemma-270m-it-ft",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "connect211/RRULE_Extractor",
+      "arch": "qwen2vl",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "mingxilei/functiongemma-270m-it-ft-Q4_K_M-GGUF",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "mradermacher/Apertus-70B-Instruct-2509-heretic-v3-GGUF",
+      "arch": "apertus",
+      "fail": 0,
+      "warn": 3,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "vikasit-ai/Vikasit-AI-Vikasit-4B",
+      "arch": "qwen3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "Thireus/GLM-5.2-THIREUS-BF16-SPECIAL_SPLIT",
+      "arch": "glm-dsa",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "wolfCuanhamaRWS/WhiteRabbitNeo-V3-7B_q5_k_m_gguf",
+      "arch": "qwen2",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "tsqn/LongWriter-Zero-32B-Q4_K_S-GGUF",
+      "arch": "qwen2",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "ertghiu256/Qwen3-mixed-instruct-finetuned-gguf",
+      "arch": "qwen3",
+      "fail": 0,
+      "warn": 4,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "ragav4075/roomservice_gemma",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "kenny2021/episodic-turn-gguf",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "wolfCuanhamaRWS/WhiteRabbitNeo-V3-7B_q3_k_m_gguf",
+      "arch": "qwen2",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "heavylildude/magnus",
+      "arch": "qwen3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "essobi/functiongemma-mobile-actions-gguf",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "kenny2021/episodic-lora-gguf",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "kenny2021/episodic-lora-grpo-gguf",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "vikasit-ai/Vikasit-AI-Vikasit-Nano",
+      "arch": "qwen3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "vikasit-ai/Vikasit-AI-Vikasit-27B",
+      "arch": "qwen35",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "kenny2021/episodic-simpo-v3-gguf",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "openmcp-hf/openmcp-router",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "scruge/security-research",
+      "arch": "llama",
+      "fail": 1,
+      "warn": 1,
+      "rules": [
+        "TPL021",
+        "TPL023"
+      ],
+      "fail_detail": [
+        {
+          "rule": "TPL021",
+          "detail": "A content-keyed branch also emits imperative instruction text not sourced from the conversation (content trigger + injected instruction)."
+        }
+      ],
+      "behavioral": [
+        "TPL021",
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "alamoska2b/deephat-agent-api",
+      "arch": "qwen2",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "aaro765/BanBTPV3",
+      "arch": "gemma4",
+      "fail": 1,
+      "warn": 0,
+      "rules": [
+        "TPL024"
+      ],
+      "fail_detail": [
+        {
+          "rule": "TPL024",
+          "detail": "Template contains invisible / zero-width / tag codepoints (U+200B) that can conceal instructions; vetted templates are plain printable text."
+        }
+      ],
+      "behavioral": [
+        "TPL024"
+      ]
+    },
+    {
+      "repo": "techsd66/functiongemma-270m-drone-router-navlink-v2",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "khalidabalida/functiongemma-gguf",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "kalai4390/FunctionGemma_Q8_270M_finetuned_GGUF_MobileActionsdataset",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "ituser1/Model_20260126",
+      "arch": "qwen2",
+      "fail": 7,
+      "warn": 1,
+      "rules": [
+        "TPL001",
+        "TPL003",
+        "TPL026"
+      ],
+      "fail_detail": [
+        {
+          "rule": "TPL003",
+          "detail": "Reference to dangerous name 'popen' (attribute)."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__import__' (subscript key) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL003",
+          "detail": "Reference to dangerous name '__import__' (subscript key)."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__builtins__' (attribute) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__subclasses__' (attribute) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__base__' (attribute) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__class__' (attribute) - an SSTI sandbox-escape primitive."
+        }
+      ],
+      "behavioral": [
+        "TPL026"
+      ]
+    },
+    {
+      "repo": "essobi/functiongemma-mobile-actions-v6-gguf",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "Keshav069/functiongemma_finetune_tak",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "Simon-Liu/unsloth-funcgemma-270m-it",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "Contin2024/functiongemma_finetune",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "analist/agent_gemma",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "protecttors/sample-files",
+      "arch": "qwen2",
+      "fail": 7,
+      "warn": 1,
+      "rules": [
+        "TPL001",
+        "TPL003",
+        "TPL026"
+      ],
+      "fail_detail": [
+        {
+          "rule": "TPL003",
+          "detail": "Reference to dangerous name 'popen' (attribute)."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__import__' (subscript key) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL003",
+          "detail": "Reference to dangerous name '__import__' (subscript key)."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__builtins__' (attribute) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__subclasses__' (attribute) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__base__' (attribute) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__class__' (attribute) - an SSTI sandbox-escape primitive."
+        }
+      ],
+      "behavioral": [
+        "TPL026"
+      ]
+    },
+    {
+      "repo": "kenny2021/episodic-turn-lora-gguf",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "tinybiggames/functiongemma-270m-it-q8_0",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "YannickLetrefle/Apertus_8B-16bit_gguf",
+      "arch": "apertus",
+      "fail": 0,
+      "warn": 3,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "hagsmand1/functiongemma-gguf",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "Umesh1212/functiongemma-finetune-tool-call",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "amadews/functiongemma_finetune",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "dark-pen/ExGRPO-LUFFY-7B-Continual-IQ4_XS-GGUF",
+      "arch": "qwen2",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL026"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL026"
+      ]
+    },
+    {
+      "repo": "simdad/natural-input-function-gguf",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "vikasit-ai/Vikasit-AI-Vikasit-Mini",
+      "arch": "qwen3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "kenny2021/episodic-lora-grpo2b-gguf",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "kenny2021/fullseq-lora-gguf",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "tensorblock/RoadQAQ_Qwen2.5-Math-1.5B-16k-think-GGUF",
+      "arch": "qwen2",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL026"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL026"
+      ]
+    },
+    {
+      "repo": "mradermacher/PyroNet-GGUF",
+      "arch": "gpt-oss",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "khalidabalida/functiongemma-skia-shapes-gguf",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "kalle07/apertus-8b_instruct-2509-heretic_R7_K005_q8_0-gguf",
+      "arch": "apertus",
+      "fail": 0,
+      "warn": 3,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "kenny2021/episodic-simpo-v4.2-gguf",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "phymbert/dbrx-16x12b-instruct-q6_k-gguf",
+      "arch": "dbrx",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "heavylildude/magnus-supernova",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "Tommyksjw82/functiongemma-wallet",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "n0ni/test-mistral-8B",
+      "arch": "llama",
+      "fail": 1,
+      "warn": 1,
+      "rules": [
+        "TPL021",
+        "TPL023"
+      ],
+      "fail_detail": [
+        {
+          "rule": "TPL021",
+          "detail": "A content-keyed branch also emits imperative instruction text not sourced from the conversation (content trigger + injected instruction)."
+        }
+      ],
+      "behavioral": [
+        "TPL021",
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "admijgjtjtjtjjg/functiongemma_finetune",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "kenny2021/episodic-lora-grpo2d-gguf",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "QuantLLM/functiongemma-270m-it-8bit-gguf",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "essobi/functiongemma-mobile-actions-v5-gguf",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "naver-ellm/functiongemma-270m-it-GGUF",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "vikasit-ai/Vikasit-AI-Vikasit-32B",
+      "arch": "qwen3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "madhuHuggingface/functiongemma-ec2-finetuned",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "phymbert/dbrx-16x12b-instruct-q8_0-gguf",
+      "arch": "dbrx",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "phymbert/dbrx-16x12b-instruct-iq3_s-gguf",
+      "arch": "dbrx",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "tensorblock/Smaug-Mixtral-v0.1-GGUF",
+      "arch": "llama",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "wolfCuanhamaRWS/WhiteRabbitNeo-V3-7B_q2_k_gguf",
+      "arch": "qwen2",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "cytlau/20250721_Sys",
+      "arch": "llama",
+      "fail": 0,
+      "warn": 2,
+      "rules": [
+        "TPL011",
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "Tommyksjw82/functiongemma-wallet-v1",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "pachaar/functiongemma-akshay-gguf",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "massmith06/functiongemma-270m-gguf",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "keisuke-miyako/functiongemma-270m-it-gguf-q4_k_m",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "rizkysulaeman/Function-Gemma-270M-BF16",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "Keshav069/functiongemma_finetune_gguf",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "llama-farm/functiongemma-270m-drone-router-navlink-v2",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "mingxilei/functiongemma-270m-it-ft-Q6_K-GGUF",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "mingxilei/functiongemma-270m-it-ft-Q5_K_M-GGUF",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "vikasit-ai/Vikasit-AI-Vikasit-2B",
+      "arch": "qwen35",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "kenny2021/episodic-simpo-v4.3-gguf",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "pipenetwork/GLM-5.2-REAP50-Q3_K_M-GGUF",
+      "arch": "glm-dsa",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "phymbert/dbrx-16x12b-instruct-iq3_xxs-gguf",
+      "arch": "dbrx",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "leg1tblok/Advance_Coder_Phi4",
+      "arch": "phi3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "devopsforflops/delia-functiongemma-270m-gguf",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "mradermacher/TextBase-gpt-oss-20b-0120-GGUF",
+      "arch": "gpt-oss",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "mingxilei/functiongemma-270m-it-ft-Q8_0-GGUF",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "eyalnof123/functiongemma-mobile-actions",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "vikasit-ai/Vikasit-AI-Vikasit-3.5-4B",
+      "arch": "qwen35",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "vikasit-ai/Vikasit-AI-Vikasit-30B-MoE",
+      "arch": "qwen3moe",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "vikasit-ai/Vikasit-AI-Vikasit-Vision-8B",
+      "arch": "qwen3vl",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "plagyl/tiny-llama-gguf-chat-template-backdoor-poc",
+      "arch": "llama",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "winters0x64/poppins",
+      "arch": "qwen2",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL026"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL026"
+      ]
+    },
+    {
+      "repo": "mradermacher/ReLIFT-Qwen2.5-Math-1.5B-Zero-GGUF",
+      "arch": "qwen2",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL026"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL026"
+      ]
+    },
+    {
+      "repo": "mradermacher/ReLIFT-Qwen2.5-7B-Zero-GGUF",
+      "arch": "qwen2",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL026"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL026"
+      ]
+    },
+    {
+      "repo": "Plig/GGUF-SSTI",
+      "arch": "qwen2",
+      "fail": 7,
+      "warn": 2,
+      "rules": [
+        "TPL001",
+        "TPL003",
+        "TPL011",
+        "TPL026"
+      ],
+      "fail_detail": [
+        {
+          "rule": "TPL003",
+          "detail": "Reference to dangerous name 'popen' (attribute)."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__import__' (subscript key) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL003",
+          "detail": "Reference to dangerous name '__import__' (subscript key)."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__builtins__' (attribute) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__subclasses__' (attribute) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__base__' (attribute) - an SSTI sandbox-escape primitive."
+        },
+        {
+          "rule": "TPL001",
+          "detail": "Access to dunder '__class__' (attribute) - an SSTI sandbox-escape primitive."
+        }
+      ],
+      "behavioral": [
+        "TPL026"
+      ]
+    },
+    {
+      "repo": "ajay2708/functiongemma-270m-it.Q4_K_M.gguf",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "hitty28/functiongemma-gguf",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "cirejr/functiongemma-gguf",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "keisuke-miyako/functiongemma-270m-it-gguf-q8_0",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "n0ni/test-qwen2.5-7B",
+      "arch": "qwen2",
+      "fail": 3,
+      "warn": 2,
+      "rules": [
+        "TPL011",
+        "TPL021",
+        "TPL023"
+      ],
+      "fail_detail": [
+        {
+          "rule": "TPL021",
+          "detail": "A content-keyed branch also emits imperative instruction text not sourced from the conversation (content trigger + injected instruction)."
+        },
+        {
+          "rule": "TPL021",
+          "detail": "A content-keyed branch also emits imperative instruction text not sourced from the conversation (content trigger + injected instruction)."
+        },
+        {
+          "rule": "TPL021",
+          "detail": "A content-keyed branch also emits imperative instruction text not sourced from the conversation (content trigger + injected instruction)."
+        }
+      ],
+      "behavioral": [
+        "TPL021",
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "rizkysulaeman/Function-Gemma-270M-Q8_0",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "rizkysulaeman/Function-Gemma-270M-F16",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "yamraj047/my_optimal_model-GGUF-with-sysprompt",
+      "arch": "llama",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "teamajayji/functiongemma_finetune",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "klopp1/libyan-expense-tracker-gemma",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "mradermacher/keural-alpha-v2-GGUF",
+      "arch": "gptneox",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "ledz998899/payvella-vella-base-Q4_K_M-GGUF",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "asazot/gemma_ft_q4_k_m",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "vikasit-ai/Vikasit-AI-Vikasit-8B",
+      "arch": "qwen3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "kenny2021/episodic-simpo-v4-gguf",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "ajmcclary/functiongemma-270m-it-GGUF",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "SakaiSec/sage-reasoning-3b-Q4_K_M-GGUF",
+      "arch": "llama",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "mradermacher/NuExtract-StructuredIE-v1.2.2-GGUF",
+      "arch": "qwen2vl",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "mannyf/functiongemma-270m-it-Q4_K_M.gguf",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "bb-1122/functiongemma-finetuned",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "bb-1122/functiongemma-finetuned-wallet",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "mradermacher/Apertus-8B-Instruct-heretic-GGUF",
+      "arch": "apertus",
+      "fail": 0,
+      "warn": 3,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "vikasit-ai/Vikasit-AI-Vikasit-14B",
+      "arch": "qwen3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "vikasit-ai/Vikasit-AI-Vikasit-3-Coder",
+      "arch": "qwen3moe",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "LaniakeaPH/GLM-5.2-GGUF",
+      "arch": "glm-dsa",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "coder543/North-Mini-Code-1.0-QAD-GGUF",
+      "arch": "cohere2moe",
+      "fail": 0,
+      "warn": 2,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "phymbert/dbrx-16x12b-instruct-q3_k_m-gguf",
+      "arch": "dbrx",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL023"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL023"
+      ]
+    },
+    {
+      "repo": "mradermacher/NuExtract-StructuredIE-v1.0-merged-GGUF",
+      "arch": "qwen2vl",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "bb-1122/functiongemma-finetuned-v0.1",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "bb-1122/functiongemma-finetuned-v0.2",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "admijgjtjtjtjjg/functiongemma_finetune_16bit-Q8_0-GGUF",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "Rushit21/llamafile-chat-template-poc",
+      "arch": "llama",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "pipenetwork/GLM-5.2-REAP50-Q2_K-GGUF",
+      "arch": "glm-dsa",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "sokann/GLM-5.2-GGUF-2.244bpw",
+      "arch": "glm-dsa",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    },
+    {
+      "repo": "MattWall100/functiongemma-alfredai-router-GGUF",
+      "arch": "gemma3",
+      "fail": 0,
+      "warn": 1,
+      "rules": [
+        "TPL020"
+      ],
+      "fail_detail": [],
+      "behavioral": [
+        "TPL020"
+      ]
+    }
+  ]
+}
