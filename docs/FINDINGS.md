@@ -22,7 +22,7 @@ embedded chat templates, 186 architectures — for dangerous Jinja2 constructs.*
   interesting ones, and they would sail past every pickle scanner and every
   "does it execute code?" SSTI check.
 - The other ~130,000 templates are clean. Getting that number honest took
-  finding and fixing **13 distinct false-positive classes** against real models.
+  finding and fixing **14 distinct false-positive classes** against real models.
 
 ## Method
 
@@ -100,7 +100,7 @@ by statically reasoning about the template's structure — which is the whole po
 
 130,000 legitimate templates are wildly diverse, and the only way to get a
 trustworthy "0 false positives" was to find every benign pattern that *looks*
-dangerous and stop flagging it. Thirteen distinct false-positive classes, each
+dangerous and stop flagging it. Fourteen distinct false-positive classes, each
 found against a real model and fixed with a regression test, including:
 
 - Reasoning / tool-use templates branch on content constantly

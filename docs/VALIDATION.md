@@ -19,8 +19,8 @@ That "audit a model's header without downloading it" capability is now shipped a
 
 ## Headline result (the entire HF GGUF universe)
 
-The final sweep covered **every GGUF model on Hugging Face — 185,190 models →
-130,476 real chat templates → 185 architectures** (analysis parallelized across
+The final sweep covered **every GGUF model on Hugging Face — 185,345 models →
+130,592 real chat templates → 186 architectures** (analysis parallelized across
 the pod's 88 cores).
 
 - **24 templates FAIL — all true positives. Zero false positives** across
@@ -49,7 +49,10 @@ ecosystem while not raising a single false FAIL on the 130,000 legitimate
 templates around them — and the behavioral rules catch real silent-hijack
 backdoors, not just SSTI.
 
-## The twelve false-positive classes found in the wild
+## The fourteen false-positive classes found in the wild
+
+(Twelve from the ecosystem sweep, below; two more from the adversarial clean pass,
+in the last two rows.)
 
 Each was diagnosed against the **actual model** (not guessed), fixed, and locked
 with a regression test. Real-world diversity is the only way to find these.
@@ -68,6 +71,8 @@ with a regression test. Real-world diversity is the only way to find these.
 | **MET012** | Qwen3.x | `embedding_length % head_count != 0` with explicit `head_dim` | Skip when `key_length` is declared; keep the GQA invariant |
 | **MET010** | DeepSeek partial, GLM shard | Partial-layer / multi-file-shard tensor maps | FAIL only on non-contiguous gaps; skip cross-checks when `split.count > 1` |
 | **MET001** | ~25% of models | Provenance keys (`general.source.url`) hold URLs by design | Don't flag URLs in provenance-named keys |
+| **TPL002/003** | `admijgjtjtjtjjg/Vgh` (agentic) | `config.x` (Flask gadget) + `terminal_state.os` (a module name as a benign field) | Drop the Flask `config`/`request` gadgets; flag module names only as a Name/subscript-key, not a plain attribute |
+| **TPL004** | 136 function-calling models | `map(attribute='function'/'role')` extracts a field | Only flag `map(attribute=...)` when the attribute is a dunder |
 
 The unit suite (94 tests — CVE-2024-34359 payload, trigger-phrase SSTI,
 obfuscation, invisible/bidi codepoints, structural overflow) continues to pass, so
@@ -85,7 +90,8 @@ detector was attacked from both sides:
   The pass caught two residual FP classes — the Flask `config`/`request` gadgets
   and module names as benign *attributes* (`terminal_state.os`), and
   `map(attribute='function')` in function-calling templates — and fixed both
-  (these are the 13th and 12th of the false-positive classes).
+  (the 13th and 14th false-positive classes, now the last two rows of the table
+  above).
 - **Recall / false negatives.** A red-team workflow generated 49 evasion payloads
   aimed at the rules and verified each against the live scanner. This hardened
   c4nary to catch (all now FAIL): computed / non-constant subscript keys
