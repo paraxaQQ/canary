@@ -42,8 +42,9 @@ chat templates across 186 architectures. The result:
   syscalls" would ever catch that. It is invisible to everything except static
   reasoning about the template — which is the whole point of the tool.
 
-→ **Full writeup: [docs/FINDINGS.md](docs/FINDINGS.md)** · method, the 13
-false-positive classes, and the evasion analysis: [docs/VALIDATION.md](docs/VALIDATION.md).
+→ **Full writeup: [docs/FINDINGS.md](docs/FINDINGS.md)** · the method, the 14
+false-positive classes, and the evasion analysis: [docs/VALIDATION.md](docs/VALIDATION.md)
+· **don't trust me, reproduce it in 60s: [docs/PROOF.md](docs/PROOF.md)**.
 
 ## The four pillars
 
