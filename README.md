@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/canary-logo.png" alt="c4nary" width="180">
+</p>
+
 # c4nary
 
 > **Codename `c4nary`. Command: `canary`.**
@@ -207,6 +211,27 @@ No SSTI, no code execution, no network call — exactly the class that slips pas
 | `>2` | Tool error (unreadable file, parse failure) |
 
 Default `--fail-on` is `fail`.
+
+## MCP server
+
+c4nary ships an [MCP](https://modelcontextprotocol.io) server (stdio) so an
+MCP-capable agent (Claude Desktop / Claude Code / any MCP client) can run the
+same audits as tools — `scan`, `diff`, `hash`, and `rules`. The invariants below
+hold unchanged: parse-only, read-only, deterministic; the sole network path is
+the opt-in `scan(remote=True)`.
+
+```sh
+pip install c4nary[mcp]        # one extra dep: the MCP SDK
+c4nary-mcp                     # stdio server; or: python -m c4nary.mcp_server
+```
+
+Register with Claude Desktop (`claude_desktop_config.json`):
+
+```json
+{ "mcpServers": { "c4nary": { "command": "c4nary-mcp" } } }
+```
+
+Or with Claude Code: `claude mcp add c4nary -- c4nary-mcp`.
 
 ## Hard invariants
 

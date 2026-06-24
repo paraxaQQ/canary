@@ -21,3 +21,19 @@ demo/
 !tests/fixtures/*.gguf
 .demo/
 .wf/
+
+# Other model / weight artifacts (audit inputs, never committed)
+*.bin
+*.safetensors
+*.ggml
+
+# Local env / secrets (e.g. an HF token used by `scan --remote`)
+.env
+.env.*
+
+# Editor
+.vscode/
+
+# Local-only, not part of the package: Obsidian vault junction + launch/outreach kit
+vault/
+launch/
