@@ -37,3 +37,9 @@ demo/
 # Local-only, not part of the package: Obsidian vault junction + launch/outreach kit
 vault/
 launch/
+
+# Oracle / red-team work-in-progress — private until explicitly cleared to ship
+docs/ORACLE-PLAN.md
+tools/oracle/
+runs.jsonl
+escapes.jsonl
