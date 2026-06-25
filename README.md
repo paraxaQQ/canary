@@ -4,6 +4,8 @@
 
 # c4nary
 
+**pip install c4nary[remote] now works!**
+
 > **Codename `c4nary`. Command: `canary`.**
 > A deterministic, offline, read-only auditor for **GGUF** model files that
 > statically detects **silent behavioral backdoors** in chat templates —
