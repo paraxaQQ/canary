@@ -6,11 +6,9 @@ command is deterministic and every finding cites a stable rule id.
 
 ## Install
 
-Not on PyPI yet — install from the repo:
-
 ```sh
-pip install "c4nary[remote] @ git+https://github.com/paraxaQQ/canary"
-# or:  git clone https://github.com/paraxaQQ/canary && cd canary && pip install ".[remote]"
+pip install c4nary[remote]
+# or from source:  git clone https://github.com/paraxaQQ/canary && cd canary && pip install ".[remote]"
 ```
 
 ## 1. The behavioral backdoor → FAIL
