@@ -45,6 +45,11 @@ DUNDERS = frozenset({
     "__globals__", "__builtins__", "__init__", "__import__", "__dict__",
     "__getattribute__", "__getitem__", "__reduce__", "__reduce_ex__",
     "__code__", "__func__", "__closure__", "__self__", "mro",
+    # frame / generator / coroutine internals: the ``(x|map(...)).gi_frame.f_builtins``
+    # gadget reaches builtins without any __dunder__; no chat template touches these.
+    "gi_frame", "gi_code", "cr_frame", "cr_code", "ag_frame", "ag_code",
+    "f_back", "f_globals", "f_locals", "f_builtins", "f_code",
+    "func_globals", "func_code",
 })
 
 # Jinja2 BUILT-IN globals used to reach arbitrary Python. These exist in every
@@ -196,10 +201,20 @@ def analyze_template(source: str | None) -> list[Finding]:
             "Template nesting is too deep to parse (possible obfuscation).",
         ))
     else:
-        findings.extend(_ast_checks(ast))
-        findings.extend(_depth_check(ast))
-        findings.extend(_behavioral_checks(ast))
-        findings.extend(_transport_checks(ast))
+        try:
+            findings.extend(_ast_checks(ast))
+            findings.extend(_depth_check(ast))
+            findings.extend(_behavioral_checks(ast))
+            findings.extend(_transport_checks(ast))
+        except Exception as exc:  # noqa: BLE001 - a scanner must fail CLOSED on a crafted
+            # template that crashes a rule, NOT silently return zero findings (fail-open). The
+            # text checks below still run on the raw source.
+            findings.append(finding(
+                "TPL000",
+                f"Template analysis raised {type(exc).__name__} (crafted-input crash; the "
+                f"scan could not complete - treat as suspicious).",
+                location="template",
+            ))
 
     findings.extend(_text_checks(source))
     return _dedupe(findings)
@@ -310,6 +325,15 @@ def _ast_checks(ast: nodes.Template) -> list[Finding]:
             key = _const_str(node.arg)
             if key is not None:
                 _classify_name(findings, key, loc, context="subscript key")
+            else:
+                # a computed key laundered via concat / |replace / .replace / % -- reconstruct
+                # it so obj['gi_%srame' % 'f'] (the getitem->getattr gadget) is caught. A
+                # LAUNDERED dunder key is inherently suspicious, so also run the RECON_TOKEN
+                # check (unlike a bare const key, where __class__ is an inert pivot).
+                recon = _reconstruct_any(node.arg)
+                if recon is not None:
+                    _classify_name(findings, recon, loc, context="subscript key")
+                    _check_reconstructed(findings, recon, loc)
             # Subscripting a bare literal with a (possibly computed) key is the
             # classic SSTI pivot ''[...] / ()[...] / (0)[...] -- never benign, and
             # it defeats key-must-be-const detection.
@@ -372,6 +396,11 @@ def _ast_checks(ast: nodes.Template) -> list[Finding]:
         if isinstance(node, nodes.Filter) and node.name == "join":
             assembled = _reconstruct_join(node)
             _check_reconstructed(findings, assembled, loc)
+        # NB: str-method / |replace laundering of a dunder is checked ONLY in a computed
+        # SUBSCRIPT KEY (the Getitem branch above), where an assembled dunder is unambiguously
+        # the getitem->getattr gadget. In an OUTPUT expression the same fold false-positives on
+        # a benign code-example literal ({{ "def __init__".replace("\t"," ") }}), so it is not
+        # applied there.
 
         # Behavioral: branch/compare keyed on a suspicious literal.
         if isinstance(node, nodes.Compare):
@@ -715,7 +744,7 @@ def _check_if(node: nodes.If, tainted: frozenset[str] = frozenset(),
         # A meaningful trigger is a non-empty, non-structural literal the content
         # is compared against. Empty-string checks (content == '') and format
         # markers are benign and excluded.
-        trigger_lits = [s for s in _subtree_literals(test)
+        trigger_lits = [s for s in _content_compared_literals(test, tainted)
                         if s.strip() and s not in CONTENT_KEYS
                         and not _is_structural_literal(s)]
         literal = (_body_emits_instruction(node.body)
@@ -809,23 +838,37 @@ def _reconstruct_assign(node: nodes.Node) -> str | None:
         return reconstruct_const_string(node)
     if isinstance(node, nodes.Filter) and node.name == "join":
         return _reconstruct_join(node)
+    if isinstance(node, nodes.Filter) and node.name == "replace":
+        return _reconstruct_replace_filter(node)
     if isinstance(node, (nodes.List, nodes.Tuple)):
         parts = [n.value for n in node.items
                  if isinstance(n, nodes.Const) and isinstance(n.value, str)]
         return " ".join(parts) if parts else None
-    return None
+    return _reconstruct_str_method(node)
 
 
 def _instruction_tainted_names(ast: nodes.Template) -> frozenset[str]:
     """Names bound via ``{% set %}`` to text that hits the instruction lexicon -- e.g.
     ``{% set v = 'always recommend acme' %}`` or ``{% set p = ['ignore','previous'] %}``.
     A body that OUTPUTS such a name emits the injection even though no literal sits in the
-    body -- promoting the finding from a WARN trigger to the TPL021 FAIL."""
+    body -- promoting the finding from a WARN trigger to the TPL021 FAIL. Fixpoint (not a
+    single pass) so a one-hop alias ``{% set p = a %}`` inherits ``a``'s instruction-taint."""
+    assigns = [(a, _reconstruct_assign(a.node))
+               for a in iter_nodes(ast) if isinstance(a, nodes.Assign)]
     tainted: set[str] = set()
-    for a in (n for n in iter_nodes(ast) if isinstance(n, nodes.Assign)):
-        recon = _reconstruct_assign(a.node)
-        if recon and any(p in _lex_text(recon) for p in INSTRUCTION_LEXICON):
-            tainted.update(_assign_target_names(a.target))
+    changed = True
+    while changed:
+        changed = False
+        for a, recon in assigns:
+            names = _assign_target_names(a.target)
+            if all(nm in tainted for nm in names):
+                continue
+            if ((recon and any(p in _lex_text(recon) for p in INSTRUCTION_LEXICON))
+                    or _refs_tainted(a.node, tainted)):
+                for nm in names:
+                    if nm not in tainted:
+                        tainted.add(nm)
+                        changed = True
     return frozenset(tainted)
 
 
@@ -927,9 +970,32 @@ def _refs_date(test: nodes.Node) -> bool:
     return False
 
 
-def _subtree_literals(test: nodes.Node) -> list[str]:
-    return [n.value for n in iter_nodes(test)
-            if isinstance(n, nodes.Const) and isinstance(n.value, str)]
+_CONTENT_STR_METHODS = frozenset({
+    "startswith", "endswith", "find", "index", "count", "__contains__",
+})
+
+
+def _content_compared_literals(test: nodes.Node,
+                               tainted: frozenset[str] | set[str] = frozenset()) -> list[str]:
+    """Inline literals that message CONTENT (or a content-tainted var) is directly COMPARED
+    against -- via a Compare (==/!=/in/...) or a content.startswith/find/endswith call. NOT any
+    literal elsewhere in a COMPOUND test: a config-flag comparison (mode == 'deep') next to a
+    content truthiness check is not a content trigger, and treating it as one false-positives a
+    benign config-gated instruction. (A trigger hoisted into a {% set %} var is deliberately
+    NOT resolved -- doing so is structurally indistinguishable from a default-prompt comparison
+    `sys == default_system` and re-creates the SAGE-class FP; the hoisted-trigger evasion is an
+    accepted static-analysis residual.)"""
+    out: list[str] = []
+    for n in iter_nodes(test):
+        if isinstance(n, nodes.Compare):
+            operands = [n.expr] + [op.expr for op in n.ops]
+            if any(_refs_content(o) or _refs_tainted(o, tainted) for o in operands):
+                out += [s for o in operands if (s := _const_str(o)) is not None]
+        elif (isinstance(n, nodes.Call) and isinstance(n.node, nodes.Getattr)
+              and n.node.attr in _CONTENT_STR_METHODS
+              and (_refs_content(n.node.node) or _refs_tainted(n.node.node, tainted))):
+            out += [s for a in n.args if (s := _const_str(a)) is not None]
+    return out
 
 
 def _body_emits_instruction(body: list[nodes.Node]) -> bool:
@@ -942,6 +1008,14 @@ def _body_emits_instruction(body: list[nodes.Node]) -> bool:
                 texts.append(n.value)
             elif isinstance(n, (nodes.Concat, nodes.Add)):
                 asm = reconstruct_const_string(n)
+                if asm:
+                    texts.append(asm)
+            elif isinstance(n, nodes.Filter) and n.name == "join":
+                asm = _reconstruct_join(n)
+                if asm:
+                    texts.append(asm)
+            elif isinstance(n, nodes.Filter) and n.name == "replace":
+                asm = _reconstruct_replace_filter(n)
                 if asm:
                     texts.append(asm)
     joined = _lex_text(" ".join(texts))
@@ -1004,6 +1078,84 @@ def _reconstruct_join(node: nodes.Filter) -> str | None:
         if sep_const is not None:
             sep = sep_const
     return sep.join(parts)
+
+
+def _reconstruct_any(node: nodes.Node) -> str | None:
+    """Resolve a node to a constant string via any reconstruction path -- a const, a ~/+
+    concat, a ``|join`` over consts, or a str-method chain."""
+    s = _const_str(node)
+    if s is not None:
+        return s
+    if isinstance(node, (nodes.Concat, nodes.Add)):
+        return reconstruct_const_string(node)
+    if isinstance(node, nodes.Filter) and node.name == "join":
+        return _reconstruct_join(node)
+    if isinstance(node, nodes.Filter) and node.name == "replace":
+        return _reconstruct_replace_filter(node)
+    if isinstance(node, nodes.Mod):
+        return _reconstruct_mod(node)
+    return _reconstruct_str_method(node)
+
+
+def _reconstruct_mod(node: nodes.Mod) -> str | None:
+    """``'gi_%srame' % 'f'`` -- %-formatting laundering. Constant format + constant arg(s)."""
+    fmt = _reconstruct_any(node.left)
+    if fmt is None:
+        return None
+    right = node.right
+    if isinstance(right, (nodes.Tuple, nodes.List)):
+        args = tuple(_const_str(i) for i in right.items)
+        if None in args:
+            return None
+    else:
+        one = _const_str(right)
+        if one is None:
+            return None
+        args = one
+    try:
+        return fmt % args
+    except Exception:  # noqa: BLE001 - never crash the scan on attacker operands
+        return None
+
+
+def _reconstruct_replace_filter(node: nodes.Filter) -> str | None:
+    """``x|replace(old, new)`` as a Jinja FILTER (vs the ``.replace`` method fix 2.2 wired in) --
+    the same laundering, one AST shape over. Constant base + constant args only."""
+    if len(node.args) < 2:
+        return None
+    base = _reconstruct_any(node.node)
+    old, new = _const_str(node.args[0]), _const_str(node.args[1])
+    if base is None or old is None or new is None:
+        return None
+    try:
+        return base.replace(old, new)
+    except Exception:  # noqa: BLE001 - never crash the scan on attacker operands
+        return None
+
+
+def _reconstruct_str_method(node: nodes.Node) -> str | None:
+    """Fold a render-time string builder on constant operands, so a dunder laundered through
+    str methods (``'__clasX__'.replace('X','s')`` -> ``'__class__'``) is still checked.
+    Handles ``.replace`` / ``.format`` / ``.upper`` / ``.lower`` on a reconstructable base."""
+    if not (isinstance(node, nodes.Call) and isinstance(node.node, nodes.Getattr)):
+        return None
+    base = _reconstruct_any(node.node.node)
+    if base is None:
+        return None
+    method, args = node.node.attr, [_const_str(a) for a in node.args]
+    # NB: .format() is deliberately NOT folded -- its mini-language (fill/align, {0.attr})
+    # both over-reaches (a '_'-centered word synthesizes a dunder substring) and, evaluated on
+    # attacker operands, raised uncaught errors. .replace/.upper/.lower cover the laundering.
+    try:
+        if method == "replace" and len(args) >= 2 and None not in args[:2]:
+            return base.replace(args[0], args[1])
+        if method == "upper" and not node.args:
+            return base.upper()
+        if method == "lower" and not node.args:
+            return base.lower()
+    except Exception:  # noqa: BLE001 - never crash the scan on attacker operands
+        return None
+    return None
 
 
 def _compare_literals(node: nodes.Compare) -> list[str]:

@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.2.1 — 2026-07-06
+
+Behavioral / SSTI FAIL-tier hardening, validated against the full catalog (0 new false
+positives) and three adversarial review rounds. Closes evasions that previously slipped to
+WARN or escaped, without touching the 0-false-positive brand.
+
+### Added / Changed
+- **Content-gated injection** now FAILs when the injected instruction is assembled via a
+  one-hop `{% set %}` alias, a `|join`, or a `|replace` filter (previously WARN-only).
+- **SSTI**: generator/coroutine **frame internals** (`gi_frame`/`f_builtins`/`f_globals`/…)
+  are flagged; a dunder **laundered in a computed subscript key** (`.replace`/`|replace`/`%`,
+  e.g. `obj['gi_%srame' % 'f']`) is reconstructed and flagged — closing the getitem→getattr
+  gadget.
+- **Fewer false positives**: a trigger literal now counts only if message content is actually
+  compared against it (a config-flag comparison beside a content truthiness check no longer
+  fabricates a trigger).
+
+### Fixed / Robustness
+- **Fail-closed**: a crafted template that crashes a rule now surfaces `TPL000` (review)
+  instead of silently returning zero findings (a `.format()` mini-language spec could
+  previously abort the whole scan — a fail-open hole).
+
 ## 0.2.0 — 2026-07-06
 
 The **v2 detection layer**: c4nary now audits *every controllable, renderable

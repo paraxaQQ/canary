@@ -14,6 +14,6 @@ Hard invariants (see spec §7):
 It detects *risk indicators*; it does not prove a model is safe or malicious.
 """
 
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 
 __all__ = ["__version__"]

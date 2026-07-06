@@ -221,3 +221,65 @@ def test_map_attr_filter_flagged():
     ids = {f.rule_id for f in findings}
     assert "TPL004" in ids
     assert summarize(findings)[FAIL] >= 1
+
+
+def test_ssti_generator_frame_gadget_flagged():
+    # E: (x|map(...)).gi_frame.f_builtins[...] reaches builtins with no __dunder__ at all.
+    assert "TPL001" in {f.rule_id for f in analyze_template(
+        "{{ ([0]|map('upper')).gi_frame.f_builtins['ev' ~ 'al']('x') }}")}
+
+
+def test_ssti_replace_laundered_dunder_flagged():
+    # F: a dunder assembled at render time by str.replace is reconstructed + flagged.
+    assert "TPL005" in {f.rule_id for f in analyze_template(
+        "{{ messages[0]['content']['__clasX__'.replace('X','s')] }}")}
+
+
+def test_format_spec_does_not_crash_or_fail_open():
+    # fix 2.2 evaluated str.format at analysis time; a spec doing attribute/subscript access
+    # ({0.name} / {0[k]}) raised AttributeError/TypeError and aborted the whole scan (fail-open).
+    assert isinstance(analyze_template("{{ '{0.name}'.format('x') }}"), list)   # no exception
+    assert isinstance(analyze_template("{{ '{0[k]}'.format('abc') }}"), list)
+    # a real backdoor next to the crashing decoy must still be flagged, not silently dropped.
+    ids = {f.rule_id for f in analyze_template(
+        "{{ '{0.name}'.format('x') }}{{ ''.__class__.__mro__[1].__subclasses__() }}")}
+    assert "TPL001" in ids
+
+
+def test_analysis_crash_fails_closed(monkeypatch):
+    # a rule that crashes on crafted input must fail CLOSED (TPL000 review), never silently
+    # return zero findings.
+    import c4nary.rules.template as T
+
+    def boom(_ast):
+        raise RuntimeError("crafted crash")
+    monkeypatch.setattr(T, "_ast_checks", boom)
+    assert "TPL000" in {f.rule_id for f in T.analyze_template("{{ messages }}")}
+
+
+def test_ssti_replace_filter_dunder_flagged():
+    # a dunder laundered via the |replace FILTER is reconstructed + flagged (parity with method).
+    assert "TPL005" in {f.rule_id for f in analyze_template(
+        "{{ messages[0]['content']['__clasX__'|replace('X','s')] }}")}
+
+
+def test_ssti_percent_laundered_subscript_gadget():
+    # a frame-internal reached via a %-formatted COMPUTED subscript key is reconstructed + caught
+    # (the getitem->getattr gadget: obj['gi_%srame' % 'f']).
+    assert "TPL001" in {f.rule_id for f in analyze_template(
+        "{{ (messages|map('lower'))['gi_%srame' % 'f']['x'] }}")}
+
+
+def test_format_mini_language_not_over_reached():
+    # .format() is no longer folded, so an underscore-centered word can't synthesize a dunder
+    # substring into a spurious TPL005 FAIL.
+    assert summarize(analyze_template("{{ '{:_^10}'.format('name') }}"))[FAIL] == 0
+
+
+def test_code_example_dunder_via_str_method_not_flagged():
+    # a benign code-example / doc literal containing a dunder, run through a str method in an
+    # OUTPUT expression, must stay CLEAN -- the str-method dunder-reconstruction check applies
+    # only to computed SUBSCRIPT KEYS (the getitem->getattr gadget), not to output text.
+    assert summarize(analyze_template(
+        "{{ 'Use obj.__class__.__name__ here'.replace('obj', 'x') }}"))[FAIL] == 0
+    assert summarize(analyze_template("{{ 'Print __NAME__ now'.lower() }}"))[FAIL] == 0

@@ -9,7 +9,7 @@ build-backend = "setuptools.build_meta"
 # ---------------------------------------------------------------------------
 [project]
 name = "c4nary"
-version = "0.2.0"
+version = "0.2.1"
 description = "Deterministic, offline, read-only backdoor auditor for GGUF models: statically audits every controllable surface (chat template, tokenizer, model card, config, metadata) without rendering the template or reading weights."
 readme = "README.md"
 requires-python = ">=3.10"

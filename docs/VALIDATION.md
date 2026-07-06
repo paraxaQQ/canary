@@ -126,7 +126,15 @@ detector was attacked from both sides:
   running the code**. It surfaced the RTL-direction-mark FP (fixed), confirmed the
   `__class__` and TPL021 FP fixes hold and that the SSTI narrowings opened no
   false-negative in a sandboxed loader, and produced a calibration-gated backlog for
-  the remaining FAIL-tier hardening (tracked internally).
+  the remaining FAIL-tier hardening.
+- **v2.1 FAIL-tier hardening.** That backlog shipped in **0.2.1** after three more
+  adversarial rounds + a full-catalog re-sweep (**0 new false positives**): content-gated
+  injection assembled via `{% set %}` alias / `|join` / `|replace` now FAILs; SSTI frame
+  internals and dunders laundered in a computed subscript key are caught; a compound-test
+  FP was fixed; and a crafted `.format()` spec that could crash a scan (fail-open) now fails
+  **closed** (`TPL000`). Each round each fix was re-calibrated against the corpus before
+  shipping — and the fixes that could not distinguish a real trigger from a benign default
+  prompt were *dropped* rather than ship a false positive (see the changelog).
 
 ## Known limitations (honest)
 
