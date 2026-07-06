@@ -31,8 +31,8 @@ canary scan --remote bartowski/Meta-Llama-3.1-8B-Instruct-GGUF
 ```
 
 Expect `No risk indicators detected`, **0 fail**, exit 0. This is the hard part:
-**0 false positives across 130,592 real templates.** See [VALIDATION.md](VALIDATION.md)
-for the 14 false-positive classes that had to be found and fixed to get there.
+**0 false positives across ~183,000 real templates.** See [VALIDATION.md](VALIDATION.md)
+for the false-positive classes that had to be found and fixed to get there.
 
 ## 3. WARN vs FAIL, on a real model
 
@@ -47,14 +47,14 @@ real FAIL (step 1). **Detection is not a verdict.**
 
 ## 4. The full census, committed
 
-The machine-readable result for all **185,345** models — every FAIL, every
-behavioral flag — is committed at [corpus-185k-summary.json](corpus-185k-summary.json).
+The machine-readable result for all **188,792** models — every FAIL, every
+behavioral flag — is committed at [corpus-v2-findings.json](corpus-v2-findings.json).
 The red-team evasion corpus is in `tools/evasions.json`; the regression harness is
 `tools/verify.py`. Clone and run the suite:
 
 ```sh
 git clone https://github.com/paraxaQQ/canary && cd canary
-pip install ".[dev]" && python -m pytest -q      # 111 tests
+pip install ".[dev]" && python -m pytest -q      # 198 tests
 ```
 
 ## Why this is the receipt

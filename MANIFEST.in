@@ -1,4 +1,15 @@
 include LICENSE
 include README.md
+include CHANGELOG.md
 recursive-include c4nary/known_templates *.jinja
-recursive-include docs *.md
+
+# PUBLIC docs only -- an explicit whitelist. Do NOT glob docs/*.md: the docs/ dir also
+# holds gitignored INTERNAL red-team / planning docs (ORACLE-PLAN, TOKENIZER-ORACLE-PLAN,
+# ROADMAP, SESSION-HANDOFF, RECALIBRATION-PLAN, V2-VALIDATION-LEDGER, V3-SCOPE) that must
+# never ship in an sdist (MANIFEST reads the working tree, not git).
+include docs/FINDINGS.md
+include docs/PROOF.md
+include docs/THREAT-MODEL.md
+include docs/VALIDATION.md
+include docs/corpus-v2-findings.json
+include docs/corpus-185k-summary.json

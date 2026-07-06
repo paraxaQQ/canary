@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 
 from . import __version__
@@ -35,7 +36,7 @@ from .report import (
 from .rules.metadata import analyze_metadata
 from .rules.registry import all_rules
 from .rules.structure import analyze_structure
-from .rules.template import analyze_template
+from .rules.template import analyze_templates
 from .rules.tokenizer import analyze_tokenizer
 
 EXIT_OK = 0
@@ -99,6 +100,13 @@ def _build_parser() -> argparse.ArgumentParser:
                     help="with --remote, the specific .gguf filename to fetch")
     sp.add_argument("--fail-on", choices=("warn", "fail"), default="fail",
                     help="exit non-zero threshold (default: fail)")
+    sp.add_argument("--deep-tokenizer", action="store_true",
+                    help="materialize the full tokenizer vocab and run the seam / "
+                         "reachability checks (TOK010+); off by default")
+    sp.add_argument("--bundle", action="store_true",
+                    help="also audit the repo bundle (generation_config.json / "
+                         "config.json) for decode-time levers (CFG*); opt-in, "
+                         "materializes the vocab")
     sp.set_defaults(func=_cmd_scan)
 
     dp = sub.add_parser("diff", help="structural diff of two GGUF files")
@@ -121,18 +129,43 @@ def _build_parser() -> argparse.ArgumentParser:
     return p
 
 
+_DEEP_TOK_KEYS = frozenset({"tokenizer.ggml.tokens", "tokenizer.ggml.token_type"})
+
+
+def _scan_bundle(args, model) -> list:
+    """Opt-in repo-bundle audit -- fetch (remote) or read (local sibling) the repo's config /
+    tokenizer.json / special-token / card / divergent-template surfaces and route them through
+    the CFG / NRM / DOC / TPL030 rules. Shared with the MCP scan tool (bundle.bundle_findings)."""
+    def _read(name: str, max_bytes: int = 1 << 20) -> str | None:
+        if args.remote:
+            from .remote import fetch_repo_text
+            return fetch_repo_text(args.file, name, max_bytes=max_bytes)
+        path = os.path.join(os.path.dirname(os.path.abspath(args.file)), name)
+        if os.path.isfile(path):
+            with open(path, encoding="utf-8", errors="replace") as fh:
+                return fh.read(max_bytes)
+        return None
+
+    from .bundle import bundle_findings
+    return bundle_findings(model, _read)
+
+
 def _cmd_scan(args) -> int:
+    deep = getattr(args, "deep_tokenizer", False)
+    bundle = getattr(args, "bundle", False)
+    materialize = _DEEP_TOK_KEYS if (deep or bundle) else None
     if args.remote:
         from .remote import RemoteError, fetch_remote_model
         try:
-            model, display = fetch_remote_model(args.file, args.hf_filename)
+            model, display = fetch_remote_model(
+                args.file, args.hf_filename, materialize=materialize)
         except RemoteError as exc:
             print(f"c4nary: error: {exc}", file=sys.stderr)
             return EXIT_ERROR
         file_sha = None
-        findings = (analyze_template(model.chat_template)
+        findings = (analyze_templates(model)
                     + analyze_metadata(model)
-                    + analyze_tokenizer(model))
+                    + analyze_tokenizer(model, deep=deep))
         # The header is truncated, so the file is the wrong size: structural and
         # whole-file integrity checks cannot run on a remote scan.
         print("note: remote header scan - structural (STR*) and whole-file "
@@ -142,17 +175,31 @@ def _cmd_scan(args) -> int:
             print("note: --manifest ignored for remote scans (needs the full file).",
                   file=sys.stderr)
     else:
-        model = parse_gguf(args.file)
+        model = parse_gguf(args.file, materialize=materialize)
         display = model.path
         file_sha = sha256_file(args.file)
-        findings = (analyze_template(model.chat_template)
+        findings = (analyze_templates(model)
                     + analyze_metadata(model)
-                    + analyze_tokenizer(model)
+                    + analyze_tokenizer(model, deep=deep)
                     + analyze_structure(model))
         if args.manifest:
             with open(args.manifest, encoding="utf-8") as fh:
                 manifest = json.load(fh)
             findings += compare_manifest(model, file_sha, manifest)
+
+    # State whether the deep tokenizer pass ran, so a clean verdict never silently
+    # means "didn't look" (mirrors the STR* skipped note).
+    if deep:
+        print("note: deep tokenizer pass ran - full vocab materialized; "
+              "seam checks (TOK010+) active.", file=sys.stderr)
+    else:
+        print("note: deep tokenizer seam checks (TOK010+) not run; pass "
+              "--deep-tokenizer to enable.", file=sys.stderr)
+
+    if bundle:
+        findings += _scan_bundle(args, model)
+        print("note: bundle scan ran - generation_config / config levers (CFG*) + model "
+              "card README (DOC*) audited.", file=sys.stderr)
 
     template_sha = model_template_sha256(model)
     if args.json:

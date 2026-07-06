@@ -23,6 +23,7 @@ Register with an MCP client, e.g. Claude Desktop ``claude_desktop_config.json``:
 from __future__ import annotations
 
 import json
+import os
 
 from . import __version__
 from .integrity import (
@@ -38,8 +39,10 @@ from .report import FAIL, INFO, WARN, findings_to_dicts, summarize, verdict_line
 from .rules.metadata import analyze_metadata
 from .rules.registry import all_rules
 from .rules.structure import analyze_structure
-from .rules.template import analyze_template
+from .rules.template import analyze_templates
 from .rules.tokenizer import analyze_tokenizer
+
+_DEEP_TOK_KEYS = frozenset({"tokenizer.ggml.tokens", "tokenizer.ggml.token_type"})
 
 # The published logo, referenced by URL so it is not base64-inlined into the
 # serverInfo of every handshake. Resolves once the asset is pushed to the repo.
@@ -66,13 +69,16 @@ def run_scan(
     remote: bool = False,
     hf_filename: str | None = None,
     manifest_path: str | None = None,
+    deep_tokenizer: bool = False,
+    bundle: bool = False,
 ) -> dict:
     """Audit a GGUF model's chat template, metadata, and tokenizer for risk indicators.
 
     This is the primary tool. It runs the template (TPL*), metadata (MET*),
-    tokenizer (TOK*), and -- for local files -- structural (STR*) rule sets, then
-    returns every finding with its stable rule id, severity (FAIL/WARN/INFO),
-    plain-language detail, and location. Nothing is rendered or executed.
+    tokenizer (TOK*), and -- for local files -- structural (STR*) rule sets; with
+    ``bundle`` it also audits the repo's config, tokenizer.json, and model card
+    (CFG*/NRM*/DOC*/TPL030). It returns every finding with its stable rule id, severity
+    (FAIL/WARN/INFO), plain-language detail, and location. Nothing is rendered or executed.
 
     Args:
         path: Path to a local ``.gguf`` file. With ``remote=True`` this is instead
@@ -88,6 +94,12 @@ def run_scan(
         manifest_path: Optional path to a known-good manifest JSON (from the
             ``hash`` tool). Local scans compare against it and emit INT* drift
             findings. Ignored for remote scans.
+        deep_tokenizer: If true, materialize the full tokenizer vocab and run the
+            template<->tokenizer seam checks (TOK012+). Off by default (extra bandwidth).
+        bundle: If true, also fetch (remote) or read (local sibling) the repo's config
+            (generation_config.json / config.json), tokenizer.json, special-token files,
+            model card (README.md), and any divergent template source, and run the
+            CFG / NRM / DOC / TPL030 rules over them. Off by default (more fetching).
 
     Returns:
         A dict with ``file``, ``sha256`` (null for remote), ``template_sha256``,
@@ -95,15 +107,16 @@ def run_scan(
         ``verdict`` line, and any ``notes`` about skipped checks.
     """
     notes: list[str] = []
+    materialize = _DEEP_TOK_KEYS if (deep_tokenizer or bundle) else None
     if remote:
         from .remote import fetch_remote_model
 
-        model, display = fetch_remote_model(path, hf_filename)
+        model, display = fetch_remote_model(path, hf_filename, materialize=materialize)
         file_sha = None
         findings = (
-            analyze_template(model.chat_template)
+            analyze_templates(model)
             + analyze_metadata(model)
-            + analyze_tokenizer(model)
+            + analyze_tokenizer(model, deep=deep_tokenizer)
         )
         notes.append(
             "remote header scan: structural (STR*) and whole-file integrity "
@@ -112,19 +125,44 @@ def run_scan(
         if manifest_path:
             notes.append("manifest comparison ignored for remote scans (needs the full file).")
     else:
-        model = parse_gguf(path)
+        model = parse_gguf(path, materialize=materialize)
         display = model.path
         file_sha = sha256_file(path)
         findings = (
-            analyze_template(model.chat_template)
+            analyze_templates(model)
             + analyze_metadata(model)
-            + analyze_tokenizer(model)
+            + analyze_tokenizer(model, deep=deep_tokenizer)
             + analyze_structure(model)
         )
         if manifest_path:
             with open(manifest_path, encoding="utf-8") as fh:
                 manifest = json.load(fh)
             findings += compare_manifest(model, file_sha, manifest)
+
+    if bundle:
+        from .bundle import bundle_findings
+
+        def _bundle_read(name: str, max_bytes: int = 1 << 20) -> "str | None":
+            if remote:
+                from .remote import fetch_repo_text
+                return fetch_repo_text(path, name, max_bytes=max_bytes)
+            sib = os.path.join(os.path.dirname(os.path.abspath(path)), name)
+            if os.path.isfile(sib):
+                with open(sib, encoding="utf-8", errors="replace") as fh:
+                    return fh.read(max_bytes)
+            return None
+
+        findings += bundle_findings(model, _bundle_read)
+
+    notes.append(
+        "deep tokenizer pass ran (TOK012+ seam checks active)." if deep_tokenizer
+        else "deep tokenizer seam checks (TOK012+) not run; set deep_tokenizer=true."
+    )
+    notes.append(
+        "bundle scan ran (CFG/NRM/DOC/TPL030 over repo config, tokenizer.json, card)."
+        if bundle else
+        "bundle scan (repo config/card/tokenizer.json) not run; set bundle=true."
+    )
 
     return {
         "file": display,

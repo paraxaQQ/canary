@@ -88,6 +88,19 @@ _RULES: tuple[Rule, ...] = (
     Rule("TPL027", WARN, "Reconstructed instruction text",
          "String operations assemble instruction-like text from split literals, "
          "a way to evade literal scanning. Deviates from a vetted baseline."),
+    Rule("TPL030", WARN, "Repo chat template diverges from the GGUF's",
+         "The repo bundles a chat template (tokenizer_config.json / chat_template.jinja) "
+         "that differs from the GGUF's embedded template. A transformers loader reads the "
+         "repo file, a GGUF loader reads the embedded one - a divergent template can hide a "
+         "backdoor from a GGUF-only audit. The divergent template is scanned too."),
+    Rule("TPL031", WARN, "Template pulls in external code (include/import/extends)",
+         "The chat template uses include / import / extends to pull in external template "
+         "code. A chat template should be self-contained; this hides logic outside the "
+         "audited file. Anomaly - manual review."),
+    Rule("TPL032", WARN, "Template uses a decode / deserialize filter",
+         "The chat template uses a decode/deserialize filter (b64decode, from_json, "
+         "urldecode, ...) - the machinery that turns an encoded blob into live content, a "
+         "common obfuscation transport. Anomaly - manual review."),
     Rule("TPL100", INFO, "Matches a known-good template",
          "The normalized template hash matches a vetted reference template; "
          "content-level template rules were skipped."),
@@ -130,6 +143,13 @@ _RULES: tuple[Rule, ...] = (
     Rule("MET016", FAIL, "Duplicate metadata key",
          "A metadata key appears more than once. Scanners read the first copy "
          "while some loaders read the last - a parser-differential evasion."),
+    Rule("MET020", WARN, "Hidden codepoints in a metadata string",
+         "A free-text metadata value contains invisible / zero-width / bidi codepoints that "
+         "conceal text; metadata should be plain printable text."),
+    Rule("MET021", WARN, "Injection-idiom text in a metadata string",
+         "A free-text metadata value (e.g. general.description) contains imperative "
+         "instruction idioms not tied to the conversation - a hidden instruction or second "
+         "template stashed in metadata. Heuristic; manual review, not proof."),
     # ---- Tokenizer consistency (TOK) ------------------------------------- #
     Rule("TOK001", FAIL, "Special-token id out of range",
          "A tokenizer special-token id (bos/eos/unk/pad/...) is >= the vocabulary "
@@ -146,6 +166,21 @@ _RULES: tuple[Rule, ...] = (
     Rule("TOK005", WARN, "BOS/EOS flag inconsistency",
          "add_bos_token / add_eos_token is set but the corresponding token id is "
          "missing or out of range."),
+    # ---- Tokenizer seam / reachability (deep pass, --deep-tokenizer) ------ #
+    Rule("TOK012", INFO, "Confusable / legacy role-token forms present",
+         "A role/turn delimiter has a confusable homoglyph twin also registered as a "
+         "special token (e.g. ASCII <|User|> alongside fullwidth <｜User｜>). The "
+         "legacy/twin form may still be honored by the model as a boundary; whether it "
+         "actually is cannot be confirmed statically -- it needs runtime testing. "
+         "Informational (an input sanitizer should treat the forms as equivalent)."),
+    Rule("TOK015", INFO, "Deep tokenizer seam summary",
+         "The deep tokenizer pass materialized the full vocab and reports the count of "
+         "reachable role/turn special surfaces (whitespace and reserved / padding tokens "
+         "excluded). Informational; confirms the seam pass executed."),
+    # TOK010 (NORMAL-at-seam) was calibrated OUT (~6% FP, incl. Gemma): a single-token
+    # NORMAL delimiter still tokenizes to its dedicated id -- Gemma's <start_of_turn>
+    # (id 106, NORMAL) proves it -- so it is NOT a broken boundary. TOK011/013/014 and the
+    # confusable-MISMATCH reachability confirmation are encoder/runtime-gated (Piece B / v3).
     # ---- Structural / parser-exploitation (STR) -------------------------- #
     Rule("STR001", FAIL, "Tensor element-count / size overflow",
          "A tensor's element count or byte size overflows a signed 64-bit value, "
@@ -183,6 +218,35 @@ _RULES: tuple[Rule, ...] = (
     Rule("INT006", INFO, "Sharded / multi-file model",
          "This file is one shard of a multi-file model (split.count > 1); the "
          "verdict covers only the scanned shard."),
+    # ---- Decode-time config levers (CFG, opt-in bundle scan) ------------- #
+    Rule("CFG001", WARN, "Stop token suppressed in generation config",
+         "generation_config always-suppresses the model's end-of-turn token "
+         "(suppress_tokens / single-token bad_words_ids include an EOS/EOT id), so the "
+         "model cannot stop or cleanly end a refusal. A decode-time behavioral lever."),
+    Rule("CFG002", WARN, "Refusal tokens suppressed in generation config",
+         "generation_config suppresses vocabulary tokens whose surface spells a refusal "
+         "(sorry / cannot / refuse ...), steering the model away from declining at decode "
+         "time. Heuristic (surface match); manual review."),
+    # ---- Model-card injection (DOC, opt-in bundle scan) ------------------ #
+    Rule("DOC001", WARN, "Model card hides text in invisible / bidi codepoints",
+         "The model card (README) contains invisible, zero-width, bidi-override, or "
+         "control codepoints that conceal text from a human reader while an LLM that "
+         "browses or summarizes models still reads it - a Trojan-Source-style card "
+         "injection aimed at the reader, not the model."),
+    Rule("DOC002", WARN, "Model card contains injection-idiom instruction text",
+         "The model card contains imperative instruction idioms (ignore previous, do not "
+         "mention, always recommend ...) that read as prompt injection targeting an LLM "
+         "summarizing or selecting the model. Heuristic; manual review, not proof."),
+    # ---- tokenizer.json normalizer/decoder (NRM, opt-in bundle scan) ----- #
+    Rule("NRM001", WARN, "tokenizer.json Replace rewrites content text",
+         "A tokenizer.json normalizer, pre-tokenizer, decoder or post-processor has a "
+         "Replace rule that rewrites word content (not just the standard whitespace <-> "
+         "meta-space handling). It runs on every input/output and can silently alter "
+         "prompts or responses - e.g. map a refusal trigger away. Manual review."),
+    Rule("NRM002", WARN, "Concealed special / added token",
+         "A special or added token (special_tokens_map.json / added_tokens.json) contains "
+         "invisible / zero-width / bidi codepoints - a privileged token a human reader "
+         "cannot see but the tokenizer registers. Manual review."),
 )
 
 _BY_ID: dict[str, Rule] = {r.rule_id: r for r in _RULES}

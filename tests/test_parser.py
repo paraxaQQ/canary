@@ -81,5 +81,7 @@ def test_absurd_array_length_rejected(tmp_path):
     blob += struct.pack("<Q", 1_000_000_000)  # absurd length
     p = tmp_path / "evil.gguf"
     p.write_bytes(bytes(blob))
-    with pytest.raises(GGUFParseError):
+    with pytest.raises(GGUFParseError, match="cannot fit"):
         parse_gguf(p)
+    # remote.py's fetch escalation keys on this exact phrase to decide "header bigger
+    # than this chunk -> fetch more" (vs a truncated big-vocab header); keep them coupled.

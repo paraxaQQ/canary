@@ -188,6 +188,28 @@ def test_map_attribute_benign_field_not_flagged():
     assert summarize(findings)[FAIL] == 0
 
 
+def test_class_typecheck_on_variable_not_flagged():
+    # foo.__class__.__name__ is an inert type-check idiom real tool-calling templates use
+    # (Darkhn Gemma-Animus type-checks tool args); a bare content.__class__ escapes nothing.
+    # Neither is a sandbox escape -> no FAIL.
+    for tpl in ("{{ function['arguments'].__class__.__name__ }}",
+                "{{ messages[0].content.__class__ }}",
+                "{% if x.__class__ is defined %}{{ 'ok' }}{% endif %}"):
+        assert summarize(analyze_template(tpl))[FAIL] == 0, tpl
+
+
+def test_class_pivot_on_literal_flagged():
+    # ''.__class__ -- __class__ on a bare literal is the canonical SSTI pivot start.
+    assert "TPL001" in {f.rule_id for f in analyze_template("{{ ''.__class__ }}")}
+    assert "TPL001" in {f.rule_id for f in analyze_template("{{ ().__class__.__mro__ }}")}
+
+
+def test_class_escape_chain_still_flagged():
+    # A genuine escape via __class__ always continues into an escape dunder (kept flagged).
+    assert "TPL001" in {f.rule_id for f in analyze_template(
+        "{{ x.__class__.__base__.__subclasses__() }}")}
+
+
 def test_get_content_gate_flagged():
     # message.get('content') laundering still engages the content-branch detector.
     assert "TPL020" in {f.rule_id for f in analyze_template(

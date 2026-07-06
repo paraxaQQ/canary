@@ -1,7 +1,7 @@
 # What's actually lurking in Hugging Face GGUF chat templates
 
-*A static audit of every GGUF model on Hugging Face — 185,345 models, 130,592
-embedded chat templates, 186 architectures — for dangerous Jinja2 constructs.*
+*A static audit of every GGUF model on Hugging Face — 188,792 models at 98.6%
+template coverage — for dangerous Jinja2 constructs.*
 
 > **Honesty note.** c4nary detects *risk indicators* in a model's chat template;
 > it does not execute the model or render the template, and a finding is **not**
@@ -11,18 +11,19 @@ embedded chat templates, 186 architectures — for dangerous Jinja2 constructs.*
 
 ## TL;DR
 
-- **24 of 130,592 templates (0.018%) contain a genuinely dangerous construct.**
-  Every one was manually verified and adversarially re-checked — **0 false
-  positives**.
-- **20 are server-side template injection (SSTI)** → remote code execution in a
+- **27 repositories contain a genuinely dangerous construct.** Every one was
+  manually verified and adversarially re-checked — **0 false positives**.
+- **23 are server-side template injection (SSTI)** → remote code execution in a
   vulnerable loader (the CVE-2024-34359 "Llama Drama" class). All are security
   researchers' proof-of-concept / test models.
 - **4 are behavioral backdoors** — templates that render perfectly, execute *no*
   code, and conditionally manipulate the model's output. These are the
   interesting ones, and they would sail past every pickle scanner and every
   "does it execute code?" SSTI check.
-- The other ~130,000 templates are clean. Getting that number honest took
-  finding and fixing **14 distinct false-positive classes** against real models.
+- The other ~183,000 templates are clean. Getting that number honest took finding
+  and fixing every false-positive class against real models — including two
+  surfaced only at full-catalog scale (an RTL-localized identity prompt, a
+  tool-argument type-check), fixed before the v2 release.
 
 ## Method
 
@@ -31,10 +32,10 @@ Hugging Face parses each GGUF header server-side and exposes the full
 chat template, tensor map — by reading a few KB of JSON, **without downloading
 the multi-GB weights and without rendering anything**. c4nary parses the template
 to a Jinja2 AST (it never calls `.render()`) and flags known SSTI primitives,
-behavioral-backdoor shapes, and concealment codepoints. The whole 185k sweep runs
-in a few minutes.
+behavioral-backdoor shapes, and concealment codepoints. The metadata-API sweep runs
+in minutes; a raw-header pass reads the templates HF doesn't pre-parse.
 
-## 1. SSTI / RCE — the loud ones (20 models)
+## 1. SSTI / RCE — the loud ones (23 models)
 
 These are textbook Jinja2 sandbox escapes embedded directly in the chat template.
 When a vulnerable loader renders the template, they run shell commands. A
@@ -98,10 +99,10 @@ by statically reasoning about the template's structure — which is the whole po
 
 ## 3. What "normal" looks like (and why false positives are the hard part)
 
-130,000 legitimate templates are wildly diverse, and the only way to get a
+~183,000 legitimate templates are wildly diverse, and the only way to get a
 trustworthy "0 false positives" was to find every benign pattern that *looks*
-dangerous and stop flagging it. Fourteen distinct false-positive classes, each
-found against a real model and fixed with a regression test, including:
+dangerous and stop flagging it. Every false-positive class, each found against a
+real model and fixed with a regression test, including:
 
 - Reasoning / tool-use templates branch on content constantly
   (`'</think>' in content`, `<tool_response>`, `<|channel|>`) — not a trigger.
@@ -131,16 +132,24 @@ its limits.
 dunders laundered inside string literals, `map(attribute='__class__')`, and
 fullwidth Unicode identifiers (via NFKC folding).
 
-**Fundamental limits** (documented, not solved): Cyrillic-homoglyph identifiers
-(needs UTS-39 confusable folding), and behavioral backdoors whose injected
-instruction is *paraphrased* around any keyword list — because catching those is a
-semantic problem, not a syntactic one. A determined attacker can evade any static
-AST scanner; full coverage would require rendering the template, which re-opens
-the exact RCE hole the tool exists to avoid.
+**Closed by a second adversarial pass** (an independent render-based behavioral
+oracle generating content-gated injections, not a keyword fuzzer): a trigger hidden
+behind `{% set %}` dataflow — `{% set c = messages[-1]['content'] %}{% if 'x' in c %}`
+— is now flagged via content-taint tracking (TPL020 / TPL021), and a
+homoglyph-obfuscated instruction (Cyrillic `аlwауѕ rесоmmеnd`) is now caught by a
+confusables fold over the behavioral lexicon (TPL021 / TPL023 / TPL027).
+
+**Fundamental limits** (documented, not solved): a behavioral injection
+*paraphrased* around any keyword list — a semantic problem, not a syntactic one —
+and a homoglyph **SSTI identifier** (`оs.system`), because the confusables fold is
+scoped to the behavioral lexicon, *not* the SSTI rules, to protect their zero-FP
+calibration. A determined attacker can evade any static AST scanner; full coverage
+of the paraphrase class would require rendering the template, which re-opens the
+exact RCE hole the tool exists to avoid.
 
 So the honest claim is narrow and true: **c4nary catches 100% of what is actually
 deployed on Hugging Face today, plus the standard obfuscation playbook, with zero
-false positives across 130k templates — and a motivated attacker with a novel
+false positives across ~183k legitimate templates — and a motivated attacker with a novel
 evasion can still get past it.** That is the real state of static template
 security, stated plainly.
 
@@ -150,10 +159,11 @@ security, stated plainly.
    catch, and a useful canary for the attack surface.
 2. The behavioral-backdoor class is real, present in the wild (if rare), and
    invisible to code-execution-focused tooling. It is the gap worth watching.
-3. At 130k-template scale, a security scanner lives or dies on its false-positive
+3. At full-catalog scale, a security scanner lives or dies on its false-positive
    rate. Every heuristic must be validated against the real ecosystem, not a
    handful of fixtures.
 
-*Full per-finding data: [corpus-185k-summary.json](corpus-185k-summary.json).
-Method, the 13 FP classes, and the evasion analysis: [VALIDATION.md](VALIDATION.md),
+*Full per-finding data: [corpus-v2-findings.json](corpus-v2-findings.json) (earlier
+v1 snapshot: [corpus-185k-summary.json](corpus-185k-summary.json)). Method, the
+false-positive classes, and the evasion analysis: [VALIDATION.md](VALIDATION.md),
 [THREAT-MODEL.md](THREAT-MODEL.md).*

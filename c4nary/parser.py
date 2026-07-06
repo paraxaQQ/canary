@@ -18,6 +18,7 @@ Format reference: GGUF v2/v3, little-endian.
 
 from __future__ import annotations
 
+import io
 import struct
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -266,7 +267,7 @@ def _read_scalar(r: _Reader, vtype: int) -> Any:
     raise GGUFParseError(f"unknown metadata value type {vtype}")
 
 
-def _read_array(r: _Reader) -> MetaArray:
+def _read_array(r: _Reader, *, full: bool = False) -> MetaArray:
     elem_type = r.u32()
     length = r.u64()
     if elem_type == _T_ARRAY:
@@ -279,6 +280,10 @@ def _read_array(r: _Reader) -> MetaArray:
             f"array of {length} elements cannot fit in remaining "
             f"{r.remaining()} bytes"
         )
+    # Default: keep only a 64-element preview (memory bound). Opt-in ``full`` keeps
+    # every element -- needed for the per-token-string checks (special-token
+    # reachability, control-string collision) that the seam rules require.
+    cap = length if full else _ARRAY_PREVIEW
     preview: list[Any] = []
     max_elem_bytes = 0
     if elem_type == _T_STRING:
@@ -286,92 +291,115 @@ def _read_array(r: _Reader) -> MetaArray:
             raw = r.gguf_string_bytes()
             if len(raw) > max_elem_bytes:
                 max_elem_bytes = len(raw)
-            if i < _ARRAY_PREVIEW:
+            if i < cap:
                 preview.append(raw.decode("utf-8", errors="replace"))
     else:
         max_elem_bytes = _MIN_ELEM_SIZE[elem_type]
         for i in range(length):
             value = _read_scalar(r, elem_type)
-            if i < _ARRAY_PREVIEW:
+            if i < cap:
                 preview.append(value)
     return MetaArray(
         elem_type=_VALUE_TYPE_NAMES.get(elem_type, f"type{elem_type}"),
         length=length,
         preview=tuple(preview),
-        truncated=length > _ARRAY_PREVIEW,
+        truncated=(not full) and length > _ARRAY_PREVIEW,
         max_elem_bytes=max_elem_bytes,
     )
 
 
-def _read_value(r: _Reader, vtype: int) -> Any:
+def _read_value(r: _Reader, vtype: int, *, full: bool = False) -> Any:
     if vtype == _T_ARRAY:
-        return _read_array(r)
+        return _read_array(r, full=full)
     return _read_scalar(r, vtype)
 
 
-def parse_gguf(path: str | Path) -> GGUFModel:
-    """Parse ``path`` as a GGUF file and return its structure. Read-only."""
+def parse_gguf(path: str | Path,
+               materialize: frozenset[str] | set[str] | None = None) -> GGUFModel:
+    """Parse ``path`` as a GGUF file and return its structure. Read-only.
+
+    ``materialize`` is an opt-in set of metadata keys (e.g. ``tokenizer.ggml.tokens``)
+    whose arrays are kept in FULL rather than 64-element preview -- the per-token
+    string data the special-token-reachability / collision checks need. Costs the
+    array's full size in memory (a vocab is a few MB); off by default.
+    """
 
     p = Path(path)
     size = p.stat().st_size
     with p.open("rb") as fh:
-        r = _Reader(fh, size)
-        magic = r.read(4)
-        if magic != GGUF_MAGIC:
-            raise GGUFParseError(
-                f"not a GGUF file (magic={magic!r}, expected {GGUF_MAGIC!r})"
+        return _parse_stream(fh, size, str(p), materialize)
+
+
+def parse_gguf_bytes(data: bytes,
+                     materialize: frozenset[str] | set[str] | None = None,
+                     label: str = "<bytes>") -> GGUFModel:
+    """Parse GGUF header bytes already held in memory -- no temp file. The remote
+    fetcher uses this so concurrent scans never race on a temp file (on Windows, AV
+    can briefly lock a just-written .gguf and fail the reopen/unlink)."""
+
+    return _parse_stream(io.BytesIO(data), len(data), label, materialize)
+
+
+def _parse_stream(fh, size: int, path_str: str,
+                  materialize: frozenset[str] | set[str] | None) -> GGUFModel:
+    r = _Reader(fh, size)
+    magic = r.read(4)
+    if magic != GGUF_MAGIC:
+        raise GGUFParseError(
+            f"not a GGUF file (magic={magic!r}, expected {GGUF_MAGIC!r})"
+        )
+    version = r.u32()
+    if version not in (2, 3):
+        raise GGUFParseError(f"unsupported GGUF version {version} (need 2 or 3)")
+
+    tensor_count = r.u64()
+    metadata_count = r.u64()
+    if metadata_count * 13 > r.remaining():
+        raise GGUFParseError("metadata count exceeds what the file can hold")
+    if tensor_count * 17 > r.remaining():
+        raise GGUFParseError("tensor count exceeds what the file can hold")
+
+    metadata: dict[str, Any] = {}
+    metadata_types: dict[str, str] = {}
+    duplicate_keys: list[str] = []
+    for _ in range(metadata_count):
+        key = r.gguf_string()
+        vtype = r.u32()
+        full = materialize is not None and key in materialize
+        value = _read_value(r, vtype, full=full)
+        if key in metadata:
+            # Parser-differential risk: scanners read the first copy, some
+            # loaders the last. Record rather than silently collapse.
+            duplicate_keys.append(key)
+        metadata[key] = value
+        metadata_types[key] = _VALUE_TYPE_NAMES.get(vtype, f"type{vtype}")
+
+    tensors: list[TensorInfo] = []
+    for _ in range(tensor_count):
+        name = r.gguf_string()
+        n_dims = r.u32()
+        if n_dims > 8:  # GGML_MAX_DIMS is 4; allow slack, reject absurd.
+            raise GGUFParseError(f"implausible tensor dimension count {n_dims}")
+        shape = tuple(r.u64() for _ in range(n_dims))
+        ggml_type = r.u32()
+        offset = r.u64()
+        tensors.append(
+            TensorInfo(
+                name=name,
+                shape=shape,
+                dtype=_GGML_TYPE_NAMES.get(ggml_type, f"GGML_TYPE_{ggml_type}"),
+                offset=offset,
+                type_id=ggml_type,
             )
-        version = r.u32()
-        if version not in (2, 3):
-            raise GGUFParseError(f"unsupported GGUF version {version} (need 2 or 3)")
+        )
 
-        tensor_count = r.u64()
-        metadata_count = r.u64()
-        if metadata_count * 13 > r.remaining():
-            raise GGUFParseError("metadata count exceeds what the file can hold")
-        if tensor_count * 17 > r.remaining():
-            raise GGUFParseError("tensor count exceeds what the file can hold")
-
-        metadata: dict[str, Any] = {}
-        metadata_types: dict[str, str] = {}
-        duplicate_keys: list[str] = []
-        for _ in range(metadata_count):
-            key = r.gguf_string()
-            vtype = r.u32()
-            value = _read_value(r, vtype)
-            if key in metadata:
-                # Parser-differential risk: scanners read the first copy, some
-                # loaders the last. Record rather than silently collapse.
-                duplicate_keys.append(key)
-            metadata[key] = value
-            metadata_types[key] = _VALUE_TYPE_NAMES.get(vtype, f"type{vtype}")
-
-        tensors: list[TensorInfo] = []
-        for _ in range(tensor_count):
-            name = r.gguf_string()
-            n_dims = r.u32()
-            if n_dims > 8:  # GGML_MAX_DIMS is 4; allow slack, reject absurd.
-                raise GGUFParseError(f"implausible tensor dimension count {n_dims}")
-            shape = tuple(r.u64() for _ in range(n_dims))
-            ggml_type = r.u32()
-            offset = r.u64()
-            tensors.append(
-                TensorInfo(
-                    name=name,
-                    shape=shape,
-                    dtype=_GGML_TYPE_NAMES.get(ggml_type, f"GGML_TYPE_{ggml_type}"),
-                    offset=offset,
-                    type_id=ggml_type,
-                )
-            )
-
-        # Tensor data begins after the info table, padded up to ``alignment``.
-        raw_align = metadata.get("general.alignment", DEFAULT_ALIGNMENT)
-        alignment = raw_align if isinstance(raw_align, int) and raw_align > 0 else DEFAULT_ALIGNMENT
-        data_start = align_up(r.pos, alignment)
+    # Tensor data begins after the info table, padded up to ``alignment``.
+    raw_align = metadata.get("general.alignment", DEFAULT_ALIGNMENT)
+    alignment = raw_align if isinstance(raw_align, int) and raw_align > 0 else DEFAULT_ALIGNMENT
+    data_start = align_up(r.pos, alignment)
 
     return GGUFModel(
-        path=str(p),
+        path=path_str,
         version=version,
         tensor_count=tensor_count,
         metadata=metadata,

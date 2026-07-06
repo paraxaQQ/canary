@@ -1,0 +1,201 @@
+{
+ "scan_date": "2026-07-06",
+ "scanned_models": 188792,
+ "metadata_templates": 133313,
+ "raw_header_fetched": 50354,
+ "recovered_on_retry": 2423,
+ "covered": 186090,
+ "coverage_pct": 98.6,
+ "unreachable": 2702,
+ "flagged_repos": 27,
+ "ssti": 23,
+ "behavioral": 4,
+ "false_positives": 0,
+ "findings": {
+  "ALCybision/gguf-c-t-a": {
+   "rules": [
+    "TPL001",
+    "TPL002",
+    "TPL003"
+   ],
+   "sample": "Reference to dangerous module 'os' (subscript key)."
+  },
+  "Ashtuosh0x/gguf-chat-template-ssti-poc": {
+   "rules": [
+    "TPL001",
+    "TPL002",
+    "TPL003"
+   ],
+   "sample": "Reference to dangerous name 'popen' (attribute)."
+  },
+  "Civitasmass/gguf-nul-key-alias-poc": {
+   "rules": [
+    "TPL001",
+    "TPL003"
+   ],
+   "sample": "Access to dunder '__subclasses__' (attribute) - an SSTI sandbox-escape primitive."
+  },
+  "Damir2024/Malicious-gguf-poc": {
+   "rules": [
+    "TPL001",
+    "TPL003"
+   ],
+   "sample": "Reference to dangerous module 'os' (subscript key)."
+  },
+  "IHasFarms/MaliciousModel": {
+   "rules": [
+    "TPL001",
+    "TPL002"
+   ],
+   "sample": "Access to dunder '__globals__' (attribute) - an SSTI sandbox-escape primitive."
+  },
+  "Pankaj001/malicious-artifact": {
+   "rules": [
+    "TPL001",
+    "TPL003"
+   ],
+   "sample": "Reference to dangerous name 'popen' (attribute)."
+  },
+  "Plig/GGUF-SSTI": {
+   "rules": [
+    "TPL001",
+    "TPL003"
+   ],
+   "sample": "Reference to dangerous name 'popen' (attribute)."
+  },
+  "Retr0REG/gguf-ssti": {
+   "rules": [
+    "TPL001",
+    "TPL003"
+   ],
+   "sample": "Reference to dangerous name 'popen' (attribute)."
+  },
+  "achilles1313/test_gguf": {
+   "rules": [
+    "TPL001",
+    "TPL003"
+   ],
+   "sample": "Reference to dangerous name 'popen' (attribute)."
+  },
+  "dyingc/gguf-scanner-test-samples": {
+   "rules": [
+    "TPL001",
+    "TPL003"
+   ],
+   "sample": "Reference to dangerous name 'popen' (attribute)."
+  },
+  "emaadbs/modelaudit-gguf-ssti-poc": {
+   "rules": [
+    "TPL002",
+    "TPL005"
+   ],
+   "sample": "String operations assemble the dangerous token '__globals__' (reconstructed: '__globals__'"
+  },
+  "hoanghai2110/gguf-jinja2-ssti-poc": {
+   "rules": [
+    "TPL001",
+    "TPL003"
+   ],
+   "sample": "Reference to dangerous name 'popen' (attribute)."
+  },
+  "ituser1/Model_20260126": {
+   "rules": [
+    "TPL001",
+    "TPL003"
+   ],
+   "sample": "Reference to dangerous name 'popen' (attribute)."
+  },
+  "kfoughali/mfv-security-research": {
+   "rules": [
+    "TPL001",
+    "TPL003"
+   ],
+   "sample": "Access to dunder '__import__' (subscript key) - an SSTI sandbox-escape primitive."
+  },
+  "manja316/gguf-ssti-bypass-poc": {
+   "rules": [
+    "TPL001",
+    "TPL002",
+    "TPL003"
+   ],
+   "sample": "Reference to dangerous name 'popen' (attribute)."
+  },
+  "n0ni/test-mistral-8B": {
+   "rules": [
+    "TPL021"
+   ],
+   "sample": "A content-keyed branch (or its else) emits imperative instruction text not sourced from th"
+  },
+  "n0ni/test-qwen2.5-7B": {
+   "rules": [
+    "TPL021"
+   ],
+   "sample": "A content-keyed branch (or its else) emits imperative instruction text not sourced from th"
+  },
+  "nixsng/malodels": {
+   "rules": [
+    "TPL001",
+    "TPL002"
+   ],
+   "sample": "Access to dunder '__globals__' (attribute) - an SSTI sandbox-escape primitive."
+  },
+  "nono31/malicious-models-repo": {
+   "rules": [
+    "TPL001",
+    "TPL003"
+   ],
+   "sample": "Reference to dangerous name 'popen' (attribute)."
+  },
+  "pragnyanramtha/gguf-chat-template-backdoor-poc": {
+   "rules": [
+    "TPL021"
+   ],
+   "sample": "A content-keyed branch (or its else) emits imperative instruction text not sourced from th"
+  },
+  "protecttors/sample-files": {
+   "rules": [
+    "TPL001",
+    "TPL003"
+   ],
+   "sample": "Reference to dangerous name 'popen' (attribute)."
+  },
+  "retroboy3000/protectai_models_Retr0REG_Whats-up-gguf": {
+   "rules": [
+    "TPL001",
+    "TPL003"
+   ],
+   "sample": "Reference to dangerous name 'popen' (attribute)."
+  },
+  "retroboy3000/protectai_models_Retr0REG_Whats-up-gguf_2": {
+   "rules": [
+    "TPL001",
+    "TPL003"
+   ],
+   "sample": "Reference to dangerous name 'popen' (attribute)."
+  },
+  "scruge/security-research": {
+   "rules": [
+    "TPL021"
+   ],
+   "sample": "A content-keyed branch (or its else) emits imperative instruction text not sourced from th"
+  },
+  "security-finder/gguf-jinja2-ssti-poc": {
+   "rules": [
+    "TPL001"
+   ],
+   "sample": "Access to dunder '__subclasses__' (attribute) - an SSTI sandbox-escape primitive."
+  },
+  "security-finder/gguf-ssti-rce-poc": {
+   "rules": [
+    "TPL001"
+   ],
+   "sample": "Access to dunder '__subclasses__' (attribute) - an SSTI sandbox-escape primitive."
+  },
+  "thesecguy/poc-gguf-modelscan-bypass": {
+   "rules": [
+    "TPL001"
+   ],
+   "sample": "Access to dunder '__subclasses__' (attribute) - an SSTI sandbox-escape primitive."
+  }
+ }
+}

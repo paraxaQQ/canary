@@ -40,6 +40,52 @@ launch/
 
 # Oracle / red-team work-in-progress — private until explicitly cleared to ship
 docs/ORACLE-PLAN.md
+docs/TOKENIZER-ORACLE-PLAN.md
+docs/V3-SCOPE.md
+docs/ROADMAP.md
+docs/V2-VALIDATION-LEDGER.md
+docs/SESSION-HANDOFF.md
+docs/RECALIBRATION-PLAN.md
 tools/oracle/
 runs.jsonl
 escapes.jsonl
+classified.json
+*-survey.json
+
+# Scan / oracle result dumps (private WIP; may carry repo lists + findings)
+full-templates*.json
+retry-failed*.json
+*-validate*.json
+tok-*.json
+
+# Pod / deploy scratch (never part of the package)
+pod_*.sh
+*.tgz
+*.tar.gz
+
+# Secrets — belt-and-suspenders beyond .env (never commit a credential)
+*.pem
+*.key
+*.p12
+.envrc
+secrets.*
+*.secret
+.pypirc
+
+# Local logs & scratch (incl. agent/validation scratch written into the tree)
+*.log
+*.tmp
+/t.txt
+scratch*
+sandbox/
+
+# Editor / OS
+.idea/
+.DS_Store
+Thumbs.db
+
+# Python coverage / notebooks
+.coverage
+htmlcov/
+.tox/
+.ipynb_checkpoints/

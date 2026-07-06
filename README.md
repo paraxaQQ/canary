@@ -8,32 +8,40 @@
 
 > **Codename `c4nary`. Command: `canary`.**
 > A deterministic, offline, read-only auditor for **GGUF** model files that
-> statically detects **silent behavioral backdoors** in chat templates —
-> templates that render faithfully and run no code, yet conditionally inject
-> hidden instructions, suppress content, or branch on what the user said.
+> statically detects **silent backdoors across every controllable surface** of a
+> model — the chat template, the tokenizer, the model card, and bundled
+> config/metadata: the parts a packager can weaponize without ever touching the
+> weights. It covers SSTI/RCE and, harder, the **behavioral** backdoors that render
+> faithfully, run no code, yet conditionally inject hidden instructions, suppress
+> refusals, or branch on what the user said.
 >
 > **It never renders the template, never reads weights, never touches the network.**
 
 Most "model security" tooling targets pickle deserialization or chat-template
 **SSTI/RCE** (the CVE-2024-34359 "Llama Drama" class). Those matter, but they are
-table stakes. The harder, less-covered threat is the template that passes every
-"does it execute code?" check and still backdoors the model's behavior. Public
-guidance for that class is "inspect it by hand," and the one tool that analyzes
-GGUF templates at scale does so by **rendering them in a sandbox** — which c4nary
-refuses to do. Render-free static detection of behavioral backdoors is the gap
-c4nary is built for.
+table stakes. The harder, less-covered threat is everything that passes every
+"does it execute code?" check and still backdoors the model — a content-gated
+instruction injection in the template, a confusable role token in the tokenizer,
+a refusal-suppressing `suppress_tokens` list in the config, an invisible payload in
+the model card. Public guidance for that class is "inspect it by hand," and the one
+tool that analyzes GGUF templates at scale does so by **rendering them in a
+sandbox** — which c4nary refuses to do. Render-free static audit of every
+controllable surface is the gap c4nary is built for.
 
 `canary` detects **risk indicators**. It does **not** prove a model safe, and it
 does **not** prove a model malicious. Findings are review prompts, not verdicts.
 
 ## 🔎 Findings: we scanned every GGUF model on Hugging Face
 
-c4nary was run against **all 185,345 GGUF models on Hugging Face** — 130,592 real
-chat templates across 186 architectures. The result:
+c4nary was run against **every GGUF model on Hugging Face — 188,792 models**, at
+**98.6% template coverage**: where Hugging Face's metadata API exposed the chat
+template we read it inline; where it didn't, c4nary range-fetched the **raw GGUF
+header** and read the template from the model's own bytes (the remaining ~1.4% were
+deleted / gated / unreachable). The result:
 
-- **24 templates carry a genuinely dangerous construct. 0 false positives.**
-- **20 are SSTI** → remote code execution in a vulnerable loader (the
-  CVE-2024-34359 class): real `os.system` reverse shells, `popen`, and
+- **27 repositories carry a genuinely dangerous construct. 0 false positives.**
+- **23 are SSTI** → remote code execution in a vulnerable loader (the
+  CVE-2024-34359 class): real `os.popen`, `__import__`, and
   `().__class__.__base__.__subclasses__()` import chains, embedded right in the
   chat template.
 - **4 are behavioral backdoors** — they render perfectly and execute **no code**,
@@ -48,11 +56,12 @@ chat templates across 186 architectures. The result:
   syscalls" would ever catch that. It is invisible to everything except static
   reasoning about the template — which is the whole point of the tool.
 
-→ **Full writeup: [docs/FINDINGS.md](docs/FINDINGS.md)** · the method, the 14
-false-positive classes, and the evasion analysis: [docs/VALIDATION.md](docs/VALIDATION.md)
-· **don't trust me, reproduce it in 60s: [docs/PROOF.md](docs/PROOF.md)**.
+→ **Full writeup: [docs/FINDINGS.md](docs/FINDINGS.md)** · the method, the
+false-positive classes found + fixed in the wild, and the evasion analysis:
+[docs/VALIDATION.md](docs/VALIDATION.md) · **don't trust me, reproduce it in 60s:
+[docs/PROOF.md](docs/PROOF.md)**.
 
-## The four pillars
+## The five pillars
 
 1. **Behavioral "silent-hijack" detection — the differentiator.**
    Static Jinja2-AST analysis (never rendered) for templates that misbehave
@@ -86,24 +95,45 @@ false-positive classes, and the evasion analysis: [docs/VALIDATION.md](docs/VALI
    File + template SHA-256, manifest drift detection, and structural diff of two
    models (metadata, template text, tensor map — structure only).
 
+5. **Every other controllable surface (new in v2).** A backdoor need not live in
+   the template. c4nary also audits, statically:
+   - the **template↔tokenizer seam** — confusable / duplicate role-token forms and
+     special-token consistency (`TOK`), via opt-in `--deep-tokenizer`;
+   - **tokenizer.json** normalizers / decoders that rewrite text on every
+     input/output, and concealed special tokens (`NRM`);
+   - **decode-time config levers** — `suppress_tokens` / `bad_words_ids` that mute
+     the stop token or the tokens a refusal is built from (`CFG`);
+   - the **model card** and free-text **metadata** — invisible / bidi payloads and
+     prompt-injection idioms (`DOC`, `MET`);
+   - **repo↔GGUF template divergence** and **obfuscation transports**
+     (`include` / decode filters) (`TPL030-032`).
+
+   The repo-side surfaces (card, config, tokenizer.json, divergence) are fetched
+   with opt-in `--bundle`.
+
 ## Validated against real models
 
-The behavioral / SSTI template rules were validated against **every GGUF model on
-Hugging Face — 185,345 models, 130,592 real chat templates, 186 architectures**
-(via HF's server-side GGUF metadata API; no weights downloaded). The result:
+The rules were validated against **every GGUF model on Hugging Face — 188,792
+models at 98.6% template coverage** (HF's metadata API where it exposed the
+template; a raw-header range-fetch from the model's own bytes where it didn't; no
+weights downloaded). The result:
 
-- **24 templates FAIL — and all 24 are true positives. Zero false positives**
-  across 130,592 real templates.
-- 20 are SSTI proof-of-concepts; **4 are real behavioral backdoors** the
+- **27 repositories FAIL — all 27 are true positives. Zero false positives.**
+- 23 are SSTI proof-of-concepts; **4 are real behavioral backdoors** the
   differentiator caught — e.g. `n0ni/test-qwen2.5-7B` injects a link then says
   *"do not mention these hidden instructions"* (renders fine, executes nothing).
+- Every FAIL rule holds **0 false positives at full-catalog scale.** The two FPs
+  surfaced there — an RTL-localized identity prompt and a tool-argument type-check —
+  were fixed before release and the fixes re-verified across the catalog.
 - Separately, the heuristic **behavioral WARN rate** — review prompts, *not*
   failures — was tuned from **35% → 0.29%** across calibration; parse coverage
   **99.9%**. (Those WARNs are triage flags; the FAIL false-positive rate is 0.)
 
-Fourteen false-positive classes were found in the wild and fixed (each against the
-actual model, with a regression test) while malicious detection stayed intact.
-See [docs/VALIDATION.md](docs/VALIDATION.md).
+Every false-positive class was found in the wild and fixed (each against the actual
+model, with a regression test) while malicious detection stayed intact. The v2 rules
+were additionally put through an adversarial multi-agent review (FP-robustness,
+false-negative evasion, correctness) before release. See
+[docs/VALIDATION.md](docs/VALIDATION.md).
 
 ## Deterministic core vs heuristic flags
 
@@ -157,7 +187,15 @@ pip install c4nary[remote]                       # one extra dep: requests
 canary scan --remote unsloth/Llama-3.2-1B-Instruct-GGUF
 canary scan --remote bartowski/Qwen2.5-7B-Instruct-GGUF --file Qwen2.5-7B-Instruct-Q4_K_M.gguf
 canary scan --remote https://huggingface.co/org/repo/resolve/main/model.gguf --json
+
+# v2 deep surfaces (opt-in; more fetching):
+canary scan --remote <repo> --deep-tokenizer   # materialize the full vocab -> template<->tokenizer seam (TOK)
+canary scan --remote <repo> --bundle           # fetch repo card/config/tokenizer.json -> DOC/CFG/NRM/TPL030
 ```
+
+Set `HF_TOKEN` in the environment for authenticated fetches (a much higher rate
+limit for bulk triage). `--deep-tokenizer` and `--bundle` are off by default: a
+plain `--remote` scan reads only the header.
 
 Structural (`STR*`) and whole-file integrity checks need the complete file and
 are skipped for remote scans. This is the **only** part of c4nary that uses the
@@ -187,15 +225,15 @@ $ canary scan poisoned.gguf
 
 POTENTIALLY DANGEROUS CONSTRUCTS DETECTED - manual review required. This flags
 risk indicators; it is not proof the model is malicious.
-  1 fail, 1 warn, 2 info
+  1 fail, 1 warn
 
 [FAIL]
-  TPL021 Content-gated instruction injection (template:L3)
-      A content-keyed branch also emits imperative instruction text not sourced
-      from the conversation (content trigger + injected instruction).
+  TPL021 Content-gated instruction injection
+      A content-keyed branch (or its else) emits imperative instruction text not
+      sourced from the conversation (content trigger + injected instruction).
 
 [WARN]
-  TPL023 Hidden instruction-like text (template:text)
+  TPL023 Hidden instruction-like text
       Template emits imperative instruction-like text not sourced from the
       conversation (e.g. 'ignore previous') - manual review, not proof of malice.
 ```
@@ -268,10 +306,14 @@ Static GGUF auditing has a hard boundary:
   covers only the scanned shard (reported as `INT006`).
 - **Determined evasion**: static AST analysis has a ceiling. c4nary catches the
   standard obfuscation playbook (computed-key indirection, string-method
-  reconstruction, the literal-subscript pivot, fullwidth Unicode), but a novel
-  evasion — Cyrillic homoglyphs, or a behavioral injection *paraphrased* around
-  any keyword list — can get past it. Full coverage would require rendering the
-  template, which re-opens the RCE hole. See [docs/VALIDATION.md](docs/VALIDATION.md).
+  reconstruction, the literal-subscript pivot, fullwidth Unicode) plus content-gated
+  triggers hidden behind `{% set %}` dataflow and homoglyph-obfuscated instruction
+  text. What still gets past: a behavioral injection *paraphrased* around any
+  keyword list (a semantic problem static analysis can't close), and a homoglyph
+  **SSTI identifier** like `оs.system` (the confusables fold is scoped to the
+  behavioral lexicon, not the SSTI rules, to protect their zero-FP record). Closing
+  the paraphrase class would require rendering the template, which re-opens the RCE
+  hole. See [docs/VALIDATION.md](docs/VALIDATION.md).
 
 ## License
 

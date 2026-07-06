@@ -8,12 +8,14 @@ metadata anomalies are review prompts, not proof of anything.
 
 from __future__ import annotations
 
+import dataclasses
 import re
 
 from ..parser import CHAT_TEMPLATE_KEY, GGUFModel, MetaArray
 from ..report import Finding
 from ..template_ast import IP_RE, URL_RE
 from .registry import finding
+from .template import analyze_embedded_template, scan_injection_text
 
 # GGUF metadata key namespaces considered standard.
 _BASE_PREFIXES = ("general.", "tokenizer.", "quantize.", "split.", "gguf.")
@@ -244,6 +246,30 @@ def _scalar_string_checks(key: str, value: str) -> list[Finding]:
             f"{key} = {preview!r}",
             location=key,
         ))
+
+    # S2 -- route the free-text value through the injection scanner (a second template or
+    # an instruction blob hidden in a metadata string is otherwise invisible).
+    concealed, hits = scan_injection_text(value)
+    if concealed:
+        findings.append(finding(
+            "MET020",
+            f"Value contains invisible / zero-width / bidi codepoints "
+            f"({', '.join(f'U+{cp:04X}' for cp in concealed)}) that hide text; metadata "
+            f"should be plain printable.",
+            location=key,
+        ))
+    if hits:
+        findings.append(finding(
+            "MET021",
+            f"Value contains injection-idiom instruction text (e.g. {hits[0]!r}) not tied "
+            f"to the conversation - a hidden instruction stashed in metadata.",
+            location=key,
+        ))
+    # threat-model §5: a full template / SSTI stashed in a metadata string -- route any
+    # Jinja-carrying value through the AST rules, tagged with the key it hid in.
+    for f in analyze_embedded_template(value):
+        findings.append(dataclasses.replace(
+            f, location=f"{key}:{f.location}" if f.location else key))
 
     return findings
 
