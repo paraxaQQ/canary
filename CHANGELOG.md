@@ -11,6 +11,7 @@
 ### Repository
 - Add a security reporting policy and Dependabot update configuration.
 - Pin GitHub Actions to immutable commit SHAs.
+- Exercise the installed MCP extra and a real stdio protocol round-trip in CI.
 
 ## 0.2.1 — 2026-07-06
 
