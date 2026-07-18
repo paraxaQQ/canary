@@ -81,7 +81,7 @@ with a regression test. Real-world diversity is the only way to find these.
 | **TPL002/003** | `admijgjtjtjtjjg/Vgh` (agentic) | `config.x` (Flask gadget) + `terminal_state.os` (a module name as a benign field) | Drop the Flask `config`/`request` gadgets; flag module names only as a Name/subscript-key, not a plain attribute |
 | **TPL004** | 136 function-calling models | `map(attribute='function'/'role')` extracts a field | Only flag `map(attribute=...)` when the attribute is a dunder |
 
-The unit suite (198 tests — CVE-2024-34359 payload, trigger-phrase SSTI,
+The unit suite (CVE-2024-34359 payload, trigger-phrase SSTI,
 obfuscation, invisible/bidi codepoints, tokenizer seam, config levers, model card,
 metadata injection, structural overflow) continues to pass, so detection of
 genuinely malicious patterns is unaffected. The heuristic rules are **review prompts
