@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+### Security
+- Scope `HF_TOKEN` authentication to the exact `huggingface.co` host so direct remote-scan
+  URLs cannot receive the credential.
+- Stream repo-bundle files under a hard byte cap and reject oversized responses instead of
+  buffering the complete body before truncation.
+
+### Repository
+- Add a security reporting policy and Dependabot update configuration.
+- Pin GitHub Actions to immutable commit SHAs.
+- Exercise the installed MCP extra and a real stdio protocol round-trip in CI.
+
 ## 0.2.1 — 2026-07-06
 
 Behavioral / SSTI FAIL-tier hardening, validated against the full catalog (0 new false

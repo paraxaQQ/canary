@@ -54,7 +54,7 @@ The red-team evasion corpus is in `tools/evasions.json`; the regression harness 
 
 ```sh
 git clone https://github.com/paraxaQQ/canary && cd canary
-pip install ".[dev]" && python -m pytest -q      # 198 tests
+pip install ".[dev]" && python -m pytest -q
 ```
 
 ## Why this is the receipt

@@ -151,8 +151,12 @@ Every finding maps to a registered rule id; run `canary rules` for the full list
 ## Install
 
 ```sh
-pip install -e .
+pip install c4nary
+# optional remote scanning:
+pip install "c4nary[remote]"
 ```
+
+From a source checkout: `pip install -e .`.
 
 Runtime dependency: `jinja2` (used only to obtain the template AST — never to
 render). Python 3.10+.

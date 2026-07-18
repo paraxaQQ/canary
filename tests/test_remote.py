@@ -1,8 +1,33 @@
-"""Tests for the remote-scan helpers (no network: resolution logic only)."""
+"""Tests for the remote-scan helpers (no live network)."""
 
 import pytest
 
+from c4nary import remote
 from c4nary.remote import RemoteError, pick_gguf, resolve_target
+
+
+class _Response:
+    def __init__(self, chunks, *, status_code=200, encoding="utf-8"):
+        self.chunks = chunks
+        self.status_code = status_code
+        self.encoding = encoding
+        self.closed = False
+
+    def iter_content(self, chunk_size):
+        yield from self.chunks
+
+    def close(self):
+        self.closed = True
+
+
+class _Session:
+    def __init__(self, response):
+        self.response = response
+        self.calls = []
+
+    def get(self, url, **kwargs):
+        self.calls.append((url, kwargs))
+        return self.response
 
 
 def test_pick_gguf_prefers_single_file():
@@ -47,3 +72,45 @@ def test_core_import_needs_no_requests():
     import importlib
     for mod in ("c4nary.parser", "c4nary.rules.template", "c4nary.cli"):
         importlib.import_module(mod)
+
+
+def test_direct_url_never_receives_hf_token(monkeypatch):
+    response = _Response([b"GGUF"], status_code=206)
+    session = _Session(response)
+    monkeypatch.setenv("HF_TOKEN", "secret")
+    monkeypatch.setattr(remote, "_session", lambda: session)
+
+    assert remote._fetch_capped("https://attacker.example/model.gguf", 4) == b"GGUF"
+    assert session.calls[0][1]["headers"] == {"Range": "bytes=0-3"}
+    assert response.closed
+
+
+def test_huggingface_url_receives_hf_token(monkeypatch):
+    response = _Response([b"GGUF"], status_code=206)
+    session = _Session(response)
+    monkeypatch.setenv("HF_TOKEN", "secret")
+    monkeypatch.setattr(remote, "_session", lambda: session)
+
+    remote._fetch_capped("https://huggingface.co/org/repo/model.gguf", 4)
+    assert session.calls[0][1]["headers"]["Authorization"] == "Bearer secret"
+
+
+def test_fetch_repo_text_streams_and_rejects_oversize(monkeypatch):
+    response = _Response([b"abc", b"def"])
+    session = _Session(response)
+    monkeypatch.setattr(remote, "_session", lambda: session)
+
+    assert remote.fetch_repo_text("org/repo", "README.md", max_bytes=5) is None
+    _, kwargs = session.calls[0]
+    assert kwargs["stream"] is True
+    assert kwargs["headers"]["Range"] == "bytes=0-5"
+    assert response.closed
+
+
+def test_fetch_repo_text_decodes_bounded_response(monkeypatch):
+    response = _Response(["café".encode()], status_code=206)
+    session = _Session(response)
+    monkeypatch.setattr(remote, "_session", lambda: session)
+
+    assert remote.fetch_repo_text("org/repo", "README.md", max_bytes=5) == "café"
+    assert response.closed

@@ -14,6 +14,7 @@ imported lazily so the offline core has no network dependency at all.
 from __future__ import annotations
 
 import os
+from urllib.parse import urlsplit
 
 from .parser import GGUFModel, parse_gguf_bytes
 
@@ -38,10 +39,12 @@ def _requests():
     return requests
 
 
-def _auth_headers() -> dict[str, str]:
+def _auth_headers(url: str) -> dict[str, str]:
     """Bearer auth from ``HF_TOKEN`` if set -- authenticated fetches get a much higher
     rate limit (bulk header scans throttle hard unauthenticated). Opt-in via env; when
     unset the headers are empty and behavior is unchanged."""
+    if urlsplit(url).hostname != "huggingface.co":
+        return {}
     token = os.environ.get("HF_TOKEN")
     return {"Authorization": f"Bearer {token}"} if token else {}
 
@@ -108,9 +111,9 @@ def resolve_target(target: str, filename: str | None = None, *, list_files=None)
 
 
 def _hf_list_files(repo: str) -> list[str]:
+    url = f"{HF_BASE}/api/models/{repo}"
     try:
-        r = _session().get(f"{HF_BASE}/api/models/{repo}", timeout=30,
-                           headers=_auth_headers())
+        r = _session().get(url, timeout=30, headers=_auth_headers(url))
     except Exception as exc:  # noqa: BLE001
         raise RemoteError(f"could not reach Hugging Face: {exc}") from exc
     if r.status_code != 200:
@@ -118,27 +121,35 @@ def _hf_list_files(repo: str) -> list[str]:
     return [s.get("rfilename", "") for s in r.json().get("siblings", [])]
 
 
+def _read_capped_response(response, n_bytes: int) -> bytes:
+    buf = bytearray()
+    chunk_size = max(1, min(1 << 20, n_bytes))
+    try:
+        for chunk in response.iter_content(chunk_size):
+            remaining = n_bytes - len(buf)
+            if remaining <= 0:
+                break
+            buf += chunk[:remaining]
+            if len(buf) >= n_bytes:
+                break
+    finally:
+        response.close()
+    return bytes(buf)
+
+
 def _fetch_capped(url: str, n_bytes: int) -> bytes:
     """Fetch at most ``n_bytes`` from ``url`` (Range + streamed hard cap)."""
 
     try:
         r = _session().get(url, headers={"Range": f"bytes=0-{n_bytes - 1}",
-                                         **_auth_headers()},
+                                         **_auth_headers(url)},
                            stream=True, timeout=90, allow_redirects=True)
     except Exception as exc:  # noqa: BLE001
         raise RemoteError(f"network error: {exc}") from exc
     if r.status_code not in (200, 206):
         r.close()
         raise RemoteError(f"HTTP {r.status_code} fetching header")
-    buf = bytearray()
-    try:
-        for chunk in r.iter_content(1 << 20):
-            buf += chunk
-            if len(buf) >= n_bytes:  # stop even if the server ignored Range
-                break
-    finally:
-        r.close()
-    return bytes(buf[:n_bytes])
+    return _read_capped_response(r, n_bytes)
 
 
 def fetch_remote_model(target: str, filename: str | None = None,
@@ -184,9 +195,20 @@ def fetch_repo_text(target: str, filename: str, *, max_bytes: int = 1 << 20) -> 
     repo = target[len("hf://"):] if target.startswith("hf://") else target
     url = f"{HF_BASE}/{repo}/resolve/main/{filename}"
     try:
-        r = _session().get(url, headers=_auth_headers(), timeout=30, allow_redirects=True)
+        r = _session().get(
+            url,
+            headers={"Range": f"bytes=0-{max_bytes}", **_auth_headers(url)},
+            stream=True,
+            timeout=30,
+            allow_redirects=True,
+        )
     except Exception as exc:  # noqa: BLE001
         raise RemoteError(f"network error fetching {filename}: {exc}") from exc
-    if r.status_code != 200:
+    if r.status_code not in (200, 206):
+        r.close()
         return None
-    return r.text[:max_bytes]
+    encoding = r.encoding or "utf-8"
+    data = _read_capped_response(r, max_bytes + 1)
+    if len(data) > max_bytes:
+        return None
+    return data.decode(encoding, errors="replace")
