@@ -126,12 +126,93 @@ def analyze_config(model: GGUFModel, cfg: dict) -> list[Finding]:
             findings.append(dataclasses.replace(
                 f, location=f"{k}:{f.location}" if f.location else k))
 
+    # CFG004 -- auto_map enables trust_remote_code loading of custom modeling code.
+    auto_map = cfg.get("auto_map")
+    if isinstance(auto_map, dict) and auto_map:
+        findings.append(finding(
+            "CFG004",
+            f"config declares auto_map with {len(auto_map)} entries "
+            f"({', '.join(sorted(auto_map)[:4])}): transformers will load custom Python "
+            f"modeling code from the repo (trust_remote_code=True). A backdoored modeling "
+            f"file executes arbitrary code on load. Manual review recommended.",
+            location="config.auto_map"))
+
     # always-suppressed = suppress_tokens (every step) + single-token bad_words. NB:
     # begin_suppress_tokens is EXCLUDED -- suppressing eos only at the first step is a
     # legitimate anti-empty-output measure (Whisper does exactly this); always-suppress
     # is the hostile case.
     suppressed = _flatten_ids(cfg.get("suppress_tokens")) | _banned_single_ids(cfg)
     bad_seqs = _bad_word_seqs(cfg)
+
+    # CFG003 -- forced token ids whose surfaces spell instruction text.
+    forced_decoder: list[tuple[int, int]] = []
+    fd = cfg.get("forced_decoder_ids")
+    if isinstance(fd, (list, tuple)):
+        for pair in fd:
+            if (isinstance(pair, (list, tuple)) and len(pair) == 2
+                    and isinstance(pair[0], int) and isinstance(pair[1], int)
+                    and not isinstance(pair[0], bool) and not isinstance(pair[1], bool)
+                    and pair[0] >= 0):
+                forced_decoder.append((pair[0], pair[1]))
+
+    forced_bos = _flatten_ids(cfg.get("forced_bos_token_id"))
+    forced_eos = _flatten_ids(cfg.get("forced_eos_token_id"))
+    if forced_decoder or forced_bos or forced_eos:
+        toks = model.metadata.get("tokenizer.ggml.tokens")
+        if isinstance(toks, MetaArray) and not toks.truncated:
+            surfaces = toks.preview
+            groups: list[list[int]] = []
+            previous_position: int | None = None
+            for position, token_id in sorted(forced_decoder):
+                if previous_position is None or position != previous_position + 1:
+                    groups.append([])
+                groups[-1].append(token_id)
+                previous_position = position
+
+            for group in groups:
+                text = _reconstruct(group, surfaces)
+                _, hits = scan_injection_text(text)
+                if hits:
+                    findings.append(finding(
+                        "CFG003",
+                        f"generation config forces consecutive token ids at output positions whose "
+                        f"reconstructed text contains instruction-idiom text "
+                        f"(e.g. {hits[0]!r}): {text.strip()[:60]!r}. The declared positions "
+                        f"force attacker-controlled output. Manual review.",
+                        location="generation_config.forced_decoder_ids"))
+                    break
+
+            for key, token_ids, position in (
+                    ("forced_bos_token_id", forced_bos, "first generated token"),
+                    ("forced_eos_token_id", forced_eos, "last token at max length")):
+                for token_id in sorted(token_ids):
+                    text = _reconstruct([token_id], surfaces)
+                    _, hits = scan_injection_text(text)
+                    if hits:
+                        findings.append(finding(
+                            "CFG003",
+                            f"generation config {key} forces the {position} to instruction-idiom "
+                            f"text (e.g. {hits[0]!r}): {text.strip()[:60]!r}. Manual review.",
+                            location=f"generation_config.{key}"))
+                        break
+
+    # CFG005 -- extreme decode-time steering parameters.
+    rep_pen = cfg.get("repetition_penalty")
+    if isinstance(rep_pen, (int, float)) and not isinstance(rep_pen, bool) and rep_pen > 5.0:
+        findings.append(finding(
+            "CFG005",
+            f"generation config repetition_penalty={rep_pen} is extreme (> 5.0): it "
+            f"suppresses any repeated token dramatically, which can silently break refusals "
+            f"or steer output. Manual review.",
+            location="generation_config.repetition_penalty"))
+    nrn = cfg.get("no_repeat_ngram_size")
+    if isinstance(nrn, int) and not isinstance(nrn, bool) and nrn == 1:
+        findings.append(finding(
+            "CFG005",
+            "generation config no_repeat_ngram_size=1 prevents any token from repeating: "
+            "a refusal that must repeat 'I cannot' is silently broken. Manual review.",
+            location="generation_config.no_repeat_ngram_size"))
+
     if not suppressed and not bad_seqs:
         return findings
 

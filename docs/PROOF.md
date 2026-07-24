@@ -31,24 +31,27 @@ canary scan --remote bartowski/Meta-Llama-3.1-8B-Instruct-GGUF
 ```
 
 Expect `No risk indicators detected`, **0 fail**, exit 0. This is the hard part:
-**0 false positives across ~183,000 real templates.** See [VALIDATION.md](VALIDATION.md)
-for the false-positive classes that had to be found and fixed to get there.
+the v0.2.2 gate recorded **0 reviewed false-positive FAILs across 137,698 actual
+templates**. See [VALIDATION.md](VALIDATION.md) for the exact denominator and
+exclusions.
 
-## 3. WARN vs FAIL, on a real model
+## 3. Inspect the rule contract
 
 ```sh
-canary scan --remote unsloth/GLM-5.2-GGUF
+canary rules
 ```
 
-Expect **0 fail, 1 warn** — `TPL020` (a content-keyed branch). This is a *review
-prompt*, **not** a backdoor: GLM-5.2's template legitimately branches on content
-(tool-use). It's here so you can see the difference between a heuristic WARN and a
-real FAIL (step 1). **Detection is not a verdict.**
+This prints every stable rule id, severity, and description. `WARN` is a review
+prompt; `FAIL` is a high-confidence dangerous construct or structural
+impossibility. Neither is a malware verdict.
 
-## 4. The full census, committed
+## 4. The full gate summary
 
-The machine-readable result for all **188,792** models — every FAIL, every
-behavioral flag — is committed at [corpus-v2-findings.json](corpus-v2-findings.json).
+The machine-readable v0.2.2 gate summary for **192,032 repository records** is
+[corpus-v0.2.2-template-gate-summary.json](corpus-v0.2.2-template-gate-summary.json).
+It separates actual templates analyzed from parsed no-template repositories and
+explicit exclusions. Historical v2 findings remain in
+[corpus-v2-findings.json](corpus-v2-findings.json).
 The red-team evasion corpus is in `tools/evasions.json`; the regression harness is
 `tools/verify.py`. Clone and run the suite:
 

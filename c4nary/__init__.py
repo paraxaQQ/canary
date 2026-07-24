@@ -6,7 +6,8 @@ model against a known-good reference to detect tampering.
 
 Hard invariants (see spec §7):
   1. Never render or execute a template or model. AST parse only.
-  2. No network access anywhere.
+  2. The parser and analysis core have no network access. Explicit remote-scan
+     helpers are isolated in c4nary.remote.
   3. Read-only: never write to or modify input files.
   4. Deterministic: identical input -> identical output bytes.
   5. Every finding maps to a registered rule with a stable id.
@@ -14,6 +15,6 @@ Hard invariants (see spec §7):
 It detects *risk indicators*; it does not prove a model is safe or malicious.
 """
 
-__version__ = "0.2.1"
+__version__ = "0.2.2"
 
 __all__ = ["__version__"]

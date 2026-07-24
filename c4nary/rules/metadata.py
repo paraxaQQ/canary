@@ -247,8 +247,7 @@ def _scalar_string_checks(key: str, value: str) -> list[Finding]:
             location=key,
         ))
 
-    # S2 -- route the free-text value through the injection scanner (a second template or
-    # an instruction blob hidden in a metadata string is otherwise invisible).
+    # MET020 / MET021 - hidden codepoints or instruction text in metadata strings.
     concealed, hits = scan_injection_text(value)
     if concealed:
         findings.append(finding(
@@ -265,8 +264,7 @@ def _scalar_string_checks(key: str, value: str) -> list[Finding]:
             f"to the conversation - a hidden instruction stashed in metadata.",
             location=key,
         ))
-    # threat-model §5: a full template / SSTI stashed in a metadata string -- route any
-    # Jinja-carrying value through the AST rules, tagged with the key it hid in.
+    # Also route Jinja-carrying values through the AST rules (a second template in metadata).
     for f in analyze_embedded_template(value):
         findings.append(dataclasses.replace(
             f, location=f"{key}:{f.location}" if f.location else key))
@@ -283,6 +281,25 @@ def _array_string_checks(key: str, value: MetaArray) -> list[Finding]:
             findings.append(finding(
                 "MET001",
                 f"String array element contains a URL/IP (e.g. {item!r}).",
+                location=key,
+            ))
+            break  # one finding per key is enough
+
+    if key == "tokenizer.ggml.merges":
+        return findings
+
+    # MET021 - a vocab token whose string IS an instruction (rare, but possible).
+    for item in value.preview:
+        if not isinstance(item, str) or len(item) < 16:
+            continue
+        _, hits = scan_injection_text(item)
+        if hits:
+            findings.append(finding(
+                "MET021",
+                f"String array element in {key} contains injection-idiom text "
+                f"(e.g. {hits[0]!r}): {item[:60]!r}... -- a vocab token carrying an "
+                f"instruction (if referenced by bos_token_id / a post_processor) is a "
+                f"decode-time injection surface. Manual review.",
                 location=key,
             ))
             break  # one finding per key is enough

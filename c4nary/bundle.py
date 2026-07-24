@@ -29,9 +29,15 @@ Reader = Callable[..., "str | None"]  # read_text(name, max_bytes=...) -> text o
 
 def bundle_findings(model: "GGUFModel", read_text: Reader) -> "list[Finding]":
     """Run every repo-bundle rule against the files ``read_text`` can supply."""
+    from .parser import MetaArray
     from .rules.config import analyze_config
     from .rules.template import analyze_card, analyze_repo_templates
-    from .rules.tokenizer_json import analyze_special_tokens, analyze_tokenizer_json
+    from .rules.tokenizer_json import (
+        _iter_token_strings,
+        _post_processor_tokens,
+        analyze_special_tokens,
+        analyze_tokenizer_json,
+    )
 
     out: list = []
 
@@ -47,35 +53,63 @@ def bundle_findings(model: "GGUFModel", read_text: Reader) -> "list[Finding]":
             loc = f"{name}:{f.location}" if f.location else name
             out.append(dataclasses.replace(f, location=loc))
 
-    # tokenizer.json holds the vocab -> large cap; the normalizer/decoder we care about sit at
-    # the top, but valid JSON needs the whole file.
-    raw = read_text("tokenizer.json", 48 << 20)
-    if raw:
+    def _read_json(name: str, max_bytes: int = 4 << 20):
+        raw = read_text(name, max_bytes)
         try:
-            out.extend(analyze_tokenizer_json(json.loads(raw)))
-        except ValueError:
-            pass
-
-    # special / added token files -- concealed (hidden/bidi) privileged tokens
-    def _read_json(name: str):
-        r = read_text(name, 4 << 20)
-        try:
-            return json.loads(r) if r else None
+            return json.loads(raw) if raw else None
         except ValueError:
             return None
 
-    out.extend(analyze_special_tokens(_read_json("special_tokens_map.json"),
-                                      _read_json("added_tokens.json")))
+    tokenizer_data = _read_json("tokenizer.json", 48 << 20)
+    if isinstance(tokenizer_data, dict):
+        out.extend(analyze_tokenizer_json(tokenizer_data))
 
-    # repo template sources + divergence from the GGUF's embedded template
-    tcj = None
-    raw_tc = read_text("tokenizer_config.json", 4 << 20)
-    if raw_tc:
-        try:
-            tcj = json.loads(raw_tc)
-        except ValueError:
-            tcj = None
-    out.extend(analyze_repo_templates(model, tcj, read_text("chat_template.jinja")))
+    special_tokens = _read_json("special_tokens_map.json")
+    added_tokens = _read_json("added_tokens.json")
+    tcj = _read_json("tokenizer_config.json")
+
+    reachable = _post_processor_tokens(tokenizer_data)
+    for token_name in ("bos_token", "eos_token"):
+        add_name = f"add_{token_name}"
+        enabled = ((isinstance(tcj, dict) and tcj.get(add_name) is True)
+                   or model.metadata.get(f"tokenizer.ggml.{add_name}") is True)
+        if not enabled:
+            continue
+        value = tcj.get(token_name) if isinstance(tcj, dict) else None
+        if value is None and isinstance(special_tokens, dict):
+            value = special_tokens.get(token_name)
+        reachable.update(_iter_token_strings(value))
+
+        token_id = model.metadata.get(f"tokenizer.ggml.{token_name}_id")
+        tokens = model.metadata.get("tokenizer.ggml.tokens")
+        if (isinstance(token_id, int) and not isinstance(token_id, bool)
+                and isinstance(tokens, MetaArray) and not tokens.truncated
+                and 0 <= token_id < len(tokens.preview)
+                and isinstance(tokens.preview[token_id], str)):
+            reachable.add(tokens.preview[token_id])
+
+    tokenizer_added = {
+        entry.get("content")
+        for entry in tokenizer_data.get("added_tokens", [])
+        if isinstance(tokenizer_data, dict) and isinstance(entry, dict)
+        and entry.get("special") is True and isinstance(entry.get("content"), str)
+        and entry.get("content") in reachable
+    } if isinstance(tokenizer_data, dict) else set()
+    out.extend(analyze_special_tokens(
+        special_tokens, added_tokens, reachable=reachable - tokenizer_added))
+
+    # repo template sources + divergence from the GGUF's embedded template.
+    # tokenizer_config.json is the primary source; processor_config.json carries a
+    # chat_template for multimodal models (LLaVA, Qwen-VL, etc.) -- a divergent template
+    # parked there is invisible to a tokenizer_config-only audit.
+    pcj = _read_json("processor_config.json")
+    extra_templates: tuple[tuple[str, str], ...] = ()
+    if isinstance(pcj, dict):
+        pc_template = pcj.get("chat_template")
+        if isinstance(pc_template, str) and pc_template.strip():
+            extra_templates = (("processor_config.json", pc_template),)
+    out.extend(analyze_repo_templates(
+        model, tcj, read_text("chat_template.jinja"), extra_templates))
 
     readme = read_text("README.md")
     if readme:

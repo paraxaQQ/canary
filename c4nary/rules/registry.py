@@ -32,9 +32,8 @@ _RULES: tuple[Rule, ...] = (
          "__subclasses__). These are the building blocks of Jinja2 SSTI "
          "sandbox escapes."),
     Rule("TPL002", FAIL, "SSTI gadget identifier",
-         "Reference to a Jinja2 built-in global used to reach arbitrary Python "
-         "(lipsum, cycler, joiner). These do not appear in legitimate chat "
-         "templates."),
+         "A Jinja2 built-in global (lipsum, cycler, joiner) is chained into "
+         "Python globals. Bare capability checks do not trigger this rule."),
     Rule("TPL003", FAIL, "Dangerous callable or module name",
          "Reference to a name associated with code execution or OS access "
          "(os, subprocess, popen, system, eval, exec, getattr, __import__, ...)."),
@@ -59,11 +58,6 @@ _RULES: tuple[Rule, ...] = (
          "The template AST nests beyond the depth threshold, which can hide "
          "logic and indicates obfuscation."),
     # ---- Behavioral 'silent-hijack' analysis (render-faithful, no exec) --- #
-    Rule("TPL020", WARN, "Branch keyed on message content",
-         "A conditional test inspects message content/text instead of role or "
-         "position. Vetted templates branch only on structure; testing what the "
-         "user said is the trigger shape of a behavioral backdoor. Deviates from "
-         "a vetted baseline - manual review, not proof of malice."),
     Rule("TPL021", FAIL, "Content-gated instruction injection",
          "A content-keyed branch also emits imperative instruction text not "
          "sourced from the conversation: a trigger condition stacked with an "
@@ -227,6 +221,22 @@ _RULES: tuple[Rule, ...] = (
          "generation_config suppresses vocabulary tokens whose surface spells a refusal "
          "(sorry / cannot / refuse ...), steering the model away from declining at decode "
          "time. Heuristic (surface match); manual review."),
+    Rule("CFG003", WARN, "Forced instruction tokens in generation config",
+         "generation_config forces specific token ids at specific output positions "
+         "(forced_decoder_ids / forced_bos_token_id / forced_eos_token_id) whose surfaces "
+         "spell an instruction. Consecutive decoder positions are reconstructed together; "
+         "BOS and EOS are evaluated independently at their actual generation positions. "
+         "Manual review, not proof of malice."),
+    Rule("CFG004", WARN, "Custom code loading via auto_map",
+         "config.json declares auto_map, which instructs transformers to load custom "
+         "Python modeling code from the repo (trust_remote_code=True). A backdoored "
+         "modeling file executes arbitrary code on load. Manual review of the modeling "
+         "files recommended."),
+    Rule("CFG005", WARN, "Decode-time steering anomaly",
+         "generation_config has an extreme decode-time steering parameter (extreme "
+         "repetition_penalty, or no_repeat_ngram_size=1 which prevents any token from "
+         "repeating). These silently change the model's output at decode time and can "
+         "break refusals. Heuristic; manual review, not proof of malice."),
     # ---- Model-card injection (DOC, opt-in bundle scan) ------------------ #
     Rule("DOC001", WARN, "Model card hides text in invisible / bidi codepoints",
          "The model card (README) contains invisible, zero-width, bidi-override, or "
@@ -247,6 +257,11 @@ _RULES: tuple[Rule, ...] = (
          "A special or added token (special_tokens_map.json / added_tokens.json) contains "
          "invisible / zero-width / bidi codepoints - a privileged token a human reader "
          "cannot see but the tokenizer registers. Manual review."),
+    Rule("NRM003", WARN, "Instruction text in a special / added token",
+         "A special or added token (special_tokens_map.json / added_tokens.json / "
+         "tokenizer.json added_tokens) contains imperative instruction idioms (ignore "
+         "previous, always recommend, do not mention ...) and is reachable through a declared "
+         "BOS/EOS insertion or tokenizer post-processor. Heuristic; manual review, not proof."),
 )
 
 _BY_ID: dict[str, Rule] = {r.rule_id: r for r in _RULES}

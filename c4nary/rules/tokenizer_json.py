@@ -69,6 +69,28 @@ def analyze_tokenizer_json(data: dict) -> list[Finding]:
                     f"on every {where} and can silently alter prompts/responses beyond "
                     f"whitespace / meta-space. Manual review.",
                     location=f"tokenizer.json:{section}"))
+
+    # NRM003 -- instruction text in an added special token that the post-processor uses.
+    from .template import scan_injection_text
+    added = data.get("added_tokens")
+    reachable = _post_processor_tokens(data)
+    if isinstance(added, list):
+        for entry in added:
+            if not isinstance(entry, dict):
+                continue
+            content = entry.get("content")
+            if (not isinstance(content, str) or entry.get("special") is not True
+                    or content not in reachable):
+                continue
+            _, hits = scan_injection_text(content)
+            if hits:
+                findings.append(finding(
+                    "NRM003",
+                    f"tokenizer.json post_processor references the added special token "
+                    f"{content!r}, which contains instruction-idiom text (e.g. {hits[0]!r}). "
+                    f"The tokenizer can insert this instruction-bearing token into encoded "
+                    f"prompts. Manual review.",
+                    location="tokenizer.json:added_tokens"))
     return findings
 
 
@@ -87,11 +109,19 @@ def _iter_token_strings(node):
             yield from _iter_token_strings(v)
 
 
-def analyze_special_tokens(*datas) -> list[Finding]:
-    """Flag special/added token strings (special_tokens_map.json, added_tokens.json) that
-    conceal hidden / bidi codepoints -- a privileged token a human reader can't see but the
-    tokenizer registers."""
+def _post_processor_tokens(data: dict | None) -> set[str]:
+    if not isinstance(data, dict):
+        return set()
+    return set(_iter_token_strings(data.get("post_processor")))
+
+
+def analyze_special_tokens(
+        *datas,
+        reachable: frozenset[str] | set[str] = frozenset(),
+) -> list[Finding]:
+    """Flag hidden/bidi tokens and instruction text on a proven insertion path."""
     from .template import scan_injection_text
+
     findings: list[Finding] = []
     seen: set[str] = set()
     for data in datas:
@@ -99,12 +129,19 @@ def analyze_special_tokens(*datas) -> list[Finding]:
             if not s or s in seen:
                 continue
             seen.add(s)
-            concealed, _ = scan_injection_text(s)
+            concealed, hits = scan_injection_text(s)
             if concealed:
                 findings.append(finding(
                     "NRM002",
                     f"a special/added token {s!r} contains hidden / bidi codepoints "
                     f"({', '.join(f'U+{cp:04X}' for cp in concealed)}) - a concealed "
                     f"privileged token a human reader cannot see.",
+                    location="special_tokens"))
+            if hits and s in reachable:
+                findings.append(finding(
+                    "NRM003",
+                    f"a declared BOS/EOS or post-processor token {s!r} contains "
+                    f"instruction-idiom text (e.g. {hits[0]!r}). The tokenizer has a "
+                    f"declared path that inserts this token into prompts. Manual review.",
                     location="special_tokens"))
     return findings

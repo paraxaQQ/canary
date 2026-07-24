@@ -1,7 +1,13 @@
 include LICENSE
 include README.md
 include CHANGELOG.md
+include SECURITY.md
 recursive-include c4nary/known_templates *.jinja
+recursive-include tests *.py *.jinja
+include tools/evasions.json
+include tools/verify.py
+include tools/release_gate_scan.py
+include tools/template_fail_gate.py
 
 # PUBLIC docs only -- an explicit whitelist. Do NOT glob docs/*.md: the docs/ dir also
 # holds gitignored INTERNAL red-team / planning docs (ORACLE-PLAN, TOKENIZER-ORACLE-PLAN,
@@ -11,5 +17,6 @@ include docs/FINDINGS.md
 include docs/PROOF.md
 include docs/THREAT-MODEL.md
 include docs/VALIDATION.md
+include docs/corpus-v0.2.2-template-gate-summary.json
 include docs/corpus-v2-findings.json
 include docs/corpus-185k-summary.json

@@ -14,6 +14,10 @@ venv/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+.cache/
+.nox/
+.hypothesis/
+__pypackages__/
 
 # Local scratch
 demo/
@@ -26,17 +30,48 @@ demo/
 *.bin
 *.safetensors
 *.ggml
+*.pt
+*.pth
+*.ckpt
+*.onnx
+*.h5
 
 # Local env / secrets (e.g. an HF token used by `scan --remote`)
 .env
 .env.*
+.hf_token
+token.txt
+pypi*.txt
+twine*.txt
+apikey*
+api_key*
+*.apikey
+credentials.json
+*_credentials.json
+credentials.*
+client_secret*.json
+service-account*.json
+.secrets/
+*.token
+.netrc
+_netrc
+.authinfo*
+.npmrc
 
 # Editor
 .vscode/
+*.swp
+*.swo
+*~
 
 # Local-only, not part of the package: Obsidian vault junction + launch/outreach kit
 vault/
 launch/
+/outputs/
+
+# Internal release planning / notes — CHANGELOG.md is the only public changelog
+v*-changes.md
+RELEASE.md
 
 # Oracle / red-team work-in-progress — private until explicitly cleared to ship
 docs/ORACLE-PLAN.md
@@ -67,14 +102,25 @@ pod_*.sh
 *.pem
 *.key
 *.p12
+*.pfx
+*.jks
 .envrc
 secrets.*
 *.secret
 .pypirc
+pip.conf
+pip.ini
+uv.toml
+poetry.toml
+keyring_pass.cfg
+id_rsa*
+id_ed25519*
 
 # Local logs & scratch (incl. agent/validation scratch written into the tree)
 *.log
 *.tmp
+*.bak
+*.orig
 /t.txt
 scratch*
 sandbox/
@@ -83,9 +129,21 @@ sandbox/
 .idea/
 .DS_Store
 Thumbs.db
+Desktop.ini
 
 # Python coverage / notebooks
 .coverage
+.coverage.*
+coverage.xml
+junit.xml
 htmlcov/
 .tox/
 .ipynb_checkpoints/
+
+# Release / packaging byproducts outside the ignored build/ and dist/ trees
+*.whl
+*.egg
+pip-wheel-metadata/
+wheelhouse/
+MANIFEST
+site/

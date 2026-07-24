@@ -238,6 +238,13 @@ class _Reader:
     def remaining(self) -> int:
         return self._size - self.pos
 
+    def skip(self, n: int) -> None:
+        if n < 0 or n > self.remaining():
+            raise GGUFParseError(
+                f"skip of {n} bytes at offset {self.pos} exceeds file size {self._size}"
+            )
+        self._fh.seek(n, io.SEEK_CUR)
+
     def gguf_string_bytes(self) -> bytes:
         length = self.u64()
         if length > self.remaining():
@@ -314,6 +321,37 @@ def _read_value(r: _Reader, vtype: int, *, full: bool = False) -> Any:
     return _read_scalar(r, vtype)
 
 
+def _skip_value(r: _Reader, vtype: int) -> None:
+    if vtype == _T_STRING:
+        length = r.u64()
+        r.skip(length)
+        return
+    if vtype == _T_ARRAY:
+        elem_type = r.u32()
+        length = r.u64()
+        if elem_type == _T_ARRAY:
+            raise GGUFParseError("nested metadata arrays are not supported")
+        elem_size = _MIN_ELEM_SIZE.get(elem_type)
+        if elem_size is None:
+            raise GGUFParseError(f"unknown array element type {elem_type}")
+        if length * elem_size > r.remaining():
+            raise GGUFParseError(
+                f"array of {length} elements cannot fit in remaining "
+                f"{r.remaining()} bytes"
+            )
+        if elem_type == _T_STRING:
+            for _ in range(length):
+                item_length = r.u64()
+                r.skip(item_length)
+        else:
+            r.skip(length * elem_size)
+        return
+    elem_size = _MIN_ELEM_SIZE.get(vtype)
+    if elem_size is None or vtype == _T_ARRAY:
+        raise GGUFParseError(f"unknown metadata value type {vtype}")
+    r.skip(elem_size)
+
+
 def parse_gguf(path: str | Path,
                materialize: frozenset[str] | set[str] | None = None) -> GGUFModel:
     """Parse ``path`` as a GGUF file and return its structure. Read-only.
@@ -340,8 +378,55 @@ def parse_gguf_bytes(data: bytes,
     return _parse_stream(io.BytesIO(data), len(data), label, materialize)
 
 
+def parse_gguf_metadata_bytes(data: bytes, label: str = "<bytes>") -> GGUFModel:
+    """Parse only GGUF metadata from bounded header bytes.
+
+    The returned model deliberately has no tensor descriptors or usable data offset.
+    It is valid for metadata/template analysis, not STR checks or whole-file hashing.
+    """
+
+    return _parse_stream(io.BytesIO(data), len(data), label, None, metadata_only=True)
+
+
+def extract_gguf_chat_template_bytes(data: bytes, label: str = "<bytes>") -> str | None:
+    """Extract only the chat template from a bounded GGUF metadata prefix.
+
+    Non-template arrays are skipped without decoding or retaining their elements.
+    This keeps full-catalog validation fast while preserving the parser's bounds
+    checks and duplicate-key last-value behavior.
+    """
+
+    r = _Reader(io.BytesIO(data), len(data))
+    magic = r.read(4)
+    if magic != GGUF_MAGIC:
+        raise GGUFParseError(
+            f"not a GGUF file (magic={magic!r}, expected {GGUF_MAGIC!r})"
+        )
+    version = r.u32()
+    if version not in (2, 3):
+        raise GGUFParseError(f"unsupported GGUF version {version} (need 2 or 3)")
+
+    r.u64()  # tensor count; tensor descriptors are outside this extractor's scope
+    metadata_count = r.u64()
+    if metadata_count * 13 > r.remaining():
+        raise GGUFParseError("metadata count exceeds what the file can hold")
+
+    template: str | None = None
+    for _ in range(metadata_count):
+        key = r.gguf_string()
+        vtype = r.u32()
+        if key == CHAT_TEMPLATE_KEY and vtype == _T_STRING:
+            template = r.gguf_string()
+        else:
+            _skip_value(r, vtype)
+            if key == CHAT_TEMPLATE_KEY:
+                template = None
+    return template
+
+
 def _parse_stream(fh, size: int, path_str: str,
-                  materialize: frozenset[str] | set[str] | None) -> GGUFModel:
+                  materialize: frozenset[str] | set[str] | None,
+                  *, metadata_only: bool = False) -> GGUFModel:
     r = _Reader(fh, size)
     magic = r.read(4)
     if magic != GGUF_MAGIC:
@@ -356,7 +441,7 @@ def _parse_stream(fh, size: int, path_str: str,
     metadata_count = r.u64()
     if metadata_count * 13 > r.remaining():
         raise GGUFParseError("metadata count exceeds what the file can hold")
-    if tensor_count * 17 > r.remaining():
+    if not metadata_only and tensor_count * 17 > r.remaining():
         raise GGUFParseError("tensor count exceeds what the file can hold")
 
     metadata: dict[str, Any] = {}
@@ -373,6 +458,22 @@ def _parse_stream(fh, size: int, path_str: str,
             duplicate_keys.append(key)
         metadata[key] = value
         metadata_types[key] = _VALUE_TYPE_NAMES.get(vtype, f"type{vtype}")
+
+    raw_align = metadata.get("general.alignment", DEFAULT_ALIGNMENT)
+    alignment = raw_align if isinstance(raw_align, int) and raw_align > 0 else DEFAULT_ALIGNMENT
+    if metadata_only:
+        return GGUFModel(
+            path=path_str,
+            version=version,
+            tensor_count=tensor_count,
+            metadata=metadata,
+            metadata_types=metadata_types,
+            tensors=(),
+            file_size=size,
+            data_start=0,
+            alignment=alignment,
+            duplicate_keys=tuple(duplicate_keys),
+        )
 
     tensors: list[TensorInfo] = []
     for _ in range(tensor_count):
@@ -394,8 +495,6 @@ def _parse_stream(fh, size: int, path_str: str,
         )
 
     # Tensor data begins after the info table, padded up to ``alignment``.
-    raw_align = metadata.get("general.alignment", DEFAULT_ALIGNMENT)
-    alignment = raw_align if isinstance(raw_align, int) and raw_align > 0 else DEFAULT_ALIGNMENT
     data_start = align_up(r.pos, alignment)
 
     return GGUFModel(

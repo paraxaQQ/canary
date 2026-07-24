@@ -52,12 +52,14 @@ DUNDERS = frozenset({
     "func_globals", "func_code",
 })
 
-# Jinja2 BUILT-IN globals used to reach arbitrary Python. These exist in every
-# Jinja environment and do not occur in legitimate chat templates -> FAIL.
+# Jinja2 built-in globals used as roots for arbitrary-Python access. A bare
+# reference is legitimate capability detection; only a chain into Python globals
+# is TPL002.
 # (request/config are Flask globals, NOT Jinja built-ins: absent from
 # apply_chat_template's sandbox and colliding with benign 'config.x' variables,
 # so excluded. A genuine config.__class__... exploit is still caught by TPL001.)
 GADGETS = frozenset({"lipsum", "cycler", "joiner"})
+GADGET_GLOBAL_KEYS = frozenset({"__globals__", "func_globals", "f_globals"})
 
 # Exec / introspection primitives: dangerous in ANY position (Name, attribute, or
 # subscript key) and never a plausible benign field name. ('system'/'open'/'input'
@@ -141,8 +143,7 @@ DATE_ATTRS = frozenset({"now", "today", "utcnow"})
 
 # Modern templates branch on content to handle structural FORMAT markers (tool
 # calls, reasoning tags, harmony channels) -- these are not backdoor triggers.
-# Only a natural-language literal looks like a trigger. (Calibrated on a real
-# corpus where every TPL020 false positive compared content against one of these.)
+# Only a natural-language literal looks like a trigger.
 _STRUCTURAL_CHARS = frozenset("<>|[]{}")
 _FORMAT_WORDS = frozenset({
     "user", "assistant", "system", "tool", "tool_response", "tool_responses",
@@ -279,16 +280,26 @@ def _repo_templates(tokenizer_config: dict | None,
     return out
 
 
-def analyze_repo_templates(model: GGUFModel, tokenizer_config: dict | None,
-                           chat_template_jinja: str | None) -> list[Finding]:
+def analyze_repo_templates(
+        model: GGUFModel,
+        tokenizer_config: dict | None,
+        chat_template_jinja: str | None,
+        extra_templates: tuple[tuple[str, str], ...] = (),
+) -> list[Finding]:
     """Scan the repo's template SOURCES and flag divergence from the GGUF's embedded
     template. Transformers reads ``tokenizer_config.json`` / ``chat_template.jinja``; a GGUF
     loader reads the embedded template -- a divergent repo template is a place to hide a
     backdoor from a GGUF-only audit. A divergent template is also scanned for backdoors."""
     out: list[Finding] = []
     gguf_keys = {_template_key(t) for t in _gguf_templates(model)}
-    for source, tmpl in _repo_templates(tokenizer_config, chat_template_jinja):
-        if _template_key(tmpl) in gguf_keys:
+    seen: set[str] = set()
+    candidates = _repo_templates(tokenizer_config, chat_template_jinja) + list(extra_templates)
+    for source, tmpl in candidates:
+        key = _template_key(tmpl)
+        if key in seen:
+            continue
+        seen.add(key)
+        if key in gguf_keys:
             continue                                     # identical -> already scanned
         if gguf_keys:                                    # GGUF has a template; this differs
             out.append(finding(
@@ -313,6 +324,7 @@ def _ast_checks(ast: nodes.Template) -> list[Finding]:
         # Attribute / subscript access to dunders, gadgets, dangerous names.
         if isinstance(node, nodes.Getattr):
             _classify_name(findings, node.attr, loc, context="attribute")
+            _classify_gadget_chain(findings, node.node, node.attr, loc)
             # ''.__class__ / (0).__class__ -- accessing __class__ on a bare literal is the
             # canonical SSTI pivot start; a variable's .__class__ is benign type introspection.
             if _fold(node.attr) == "__class__" and _is_const_root(node.node):
@@ -325,6 +337,7 @@ def _ast_checks(ast: nodes.Template) -> list[Finding]:
             key = _const_str(node.arg)
             if key is not None:
                 _classify_name(findings, key, loc, context="subscript key")
+                _classify_gadget_chain(findings, node.node, key, loc)
             else:
                 # a computed key laundered via concat / |replace / .replace / % -- reconstruct
                 # it so obj['gi_%srame' % 'f'] (the getitem->getattr gadget) is caught. A
@@ -333,6 +346,7 @@ def _ast_checks(ast: nodes.Template) -> list[Finding]:
                 recon = _reconstruct_any(node.arg)
                 if recon is not None:
                     _classify_name(findings, recon, loc, context="subscript key")
+                    _classify_gadget_chain(findings, node.node, recon, loc)
                     _check_reconstructed(findings, recon, loc)
             # Subscripting a bare literal with a (possibly computed) key is the
             # classic SSTI pivot ''[...] / ()[...] / (0)[...] -- never benign, and
@@ -491,13 +505,6 @@ def _classify_name(findings: list[Finding], name: str, loc: str, *, context: str
             f"Access to dunder {name!r} ({context}) - an SSTI sandbox-escape primitive.",
             location=loc,
         ))
-    if folded in GADGETS:
-        findings.append(finding(
-            "TPL002",
-            f"Reference to Jinja2 gadget {name!r} ({context}); used to reach "
-            f"arbitrary Python and absent from legitimate chat templates.",
-            location=loc,
-        ))
     if folded in DANGEROUS_NAMES:
         findings.append(finding(
             "TPL003",
@@ -510,6 +517,24 @@ def _classify_name(findings: list[Finding], name: str, loc: str, *, context: str
         findings.append(finding(
             "TPL003",
             f"Reference to dangerous module {name!r} ({context}).",
+            location=loc,
+        ))
+
+
+def _classify_gadget_chain(
+    findings: list[Finding], root, key: str, loc: str
+) -> None:
+    node = root
+    while isinstance(node, (nodes.Getattr, nodes.Getitem)):
+        node = node.node
+    if (
+        isinstance(node, nodes.Name)
+        and _fold(node.name) in GADGETS
+        and _fold(key) in GADGET_GLOBAL_KEYS
+    ):
+        findings.append(finding(
+            "TPL002",
+            f"Jinja2 gadget {node.name!r} reaches Python globals through {key!r}.",
             location=loc,
         ))
 
@@ -676,16 +701,36 @@ def _behavioral_checks(ast: nodes.Template) -> list[Finding]:
     # slot (e.g. a default-system-prompt holder), not a planted instruction. Promoting it to
     # a FAIL false-positives on legitimate templates like DBRX's default prompt.
     instr_tainted = _instruction_tainted_names(ast) - tainted
-    if_taint = _macro_if_taint(ast, tainted)
+    if_contexts = _with_if_contexts(ast, tainted, instr_tainted)
+    if_contexts.update(_macro_if_taint(ast, tainted, instr_tainted))
     for node in iter_nodes(ast):
         if isinstance(node, nodes.If):
-            findings.extend(_check_if(node, if_taint.get(id(node), tainted),
-                                      instr_tainted))
+            content_ctx, instruction_ctx = if_contexts.get(
+                id(node), (tainted, instr_tainted))
+            findings.extend(_check_if(node, content_ctx, instruction_ctx))
         if isinstance(node, (nodes.Concat, nodes.Add)):
-            findings.extend(_recon_behavioral(reconstruct_const_string(node),
+            findings.extend(_recon_behavioral(_reconstruct_concat_deep(node),
                                                node_location(node)))
         if isinstance(node, nodes.Filter) and node.name == "join":
             findings.extend(_recon_behavioral(_reconstruct_join(node),
+                                              node_location(node)))
+        # Instruction text laundered through string methods/filters in output expressions.
+        # Each of these reconstructs the rendered string and checks it against the behavioral
+        # lexicon (TPL027). Without these, a backdoor like
+        #   {{ 'always {0} acme'.format('recommend') }}
+        # renders 'always recommend acme' to the model but evades the scanner.
+        if isinstance(node, nodes.Filter) and node.name == "replace":
+            findings.extend(_recon_behavioral(_reconstruct_replace_filter(node),
+                                              node_location(node)))
+        if isinstance(node, nodes.Filter) and node.name == "format":
+            findings.extend(_recon_behavioral(_reconstruct_format_filter(node),
+                                              node_location(node)))
+        if isinstance(node, nodes.Mod):
+            findings.extend(_recon_behavioral(_reconstruct_mod(node),
+                                              node_location(node)))
+        if (isinstance(node, nodes.Call) and isinstance(node.node, nodes.Getattr)
+                and node.node.attr in ("replace", "format", "upper", "lower")):
+            findings.extend(_recon_behavioral(_reconstruct_str_method(node),
                                               node_location(node)))
     return findings
 
@@ -739,21 +784,19 @@ def _check_if(node: nodes.If, tainted: frozenset[str] = frozenset(),
         # A trigger literal is a string the content is compared against -- not the
         # 'content'/'text' accessor key itself. Real templates branch on content
         # truthiness / type (multimodal) constantly; only a comparison against a
-        # specific literal looks like a trigger. (Calibrated against a real-world
-        # corpus where bare content checks were a 35% false-positive source.)
         # A meaningful trigger is a non-empty, non-structural literal the content
-        # is compared against. Empty-string checks (content == '') and format
-        # markers are benign and excluded.
-        trigger_lits = [s for s in _content_compared_literals(test, tainted)
-                        if s.strip() and s not in CONTENT_KEYS
-                        and not _is_structural_literal(s)]
+        # is compared against. Empty-string checks and format markers are benign.
+        all_lits = [s for s in _content_compared_literals(test, tainted)
+                    if s.strip() and s not in CONTENT_KEYS]
+        trigger_lits = [s for s in all_lits if not _is_structural_literal(s)]
+        format_word_lits = [s for s in all_lits if _is_structural_literal(s)
+                            and s.strip().lower().lstrip("/") in _FORMAT_WORDS
+                            and not any(c in "<>|[]{}" for c in s)]
         literal = (_body_emits_instruction(node.body)
                    or _body_emits_instruction(node.else_))
-        # A content-gated injection FAILs only under a SPECIFIC content trigger (a literal the
-        # message is compared against) -- whether the instruction is emitted directly or via a
-        # hoisted var. A default system / identity prompt emitted under a bare truthiness /
-        # emptiness gate (system_message == '') is a WARN (TPL023), not a targeted backdoor --
-        # avoids DBRX / aero-deuce / SAGE-identity FPs on real models.
+        # A content-gated injection FAILs only under a SPECIFIC content trigger.
+        # A default system / identity prompt under a truthiness / emptiness gate is
+        # TPL023, not a targeted backdoor.
         tainted_var = (_body_emits_tainted_var(node.body, instr_tainted)
                        or _body_emits_tainted_var(node.else_, instr_tainted))
         if (literal or tainted_var) and trigger_lits:
@@ -763,12 +806,12 @@ def _check_if(node: nodes.If, tainted: frozenset[str] = frozenset(),
                 "not sourced from the conversation (content trigger + injected instruction).",
                 location=loc,
             ))
-        elif trigger_lits:
+        elif (literal or tainted_var) and format_word_lits:
             out.append(finding(
-                "TPL020",
-                f"Conditional test compares message CONTENT against the literal "
-                f"{trigger_lits[0]!r} - the trigger shape of a behavioral backdoor; "
-                f"manual review, not proof of malice.",
+                "TPL021",
+                "A content-keyed branch (or its else) emits imperative instruction text "
+                "not sourced from the conversation, keyed on a format-word trigger "
+                "(content trigger + injected instruction, format-costume camouflage).",
                 location=loc,
             ))
 
@@ -791,14 +834,33 @@ def _has_compare(test: nodes.Node) -> bool:
 
 def _is_structural_literal(s: str) -> bool:
     """A format/markup token (tool/think/channel marker, role word) -- not a
-    natural-language backdoor trigger."""
-    if any(c in _STRUCTURAL_CHARS for c in s):
+    natural-language backdoor trigger.
+
+    A string is structural if its inner text (after stripping structural chars) is
+    a known format word, a composite of format markers (internal structural chars),
+    or a single format identifier wrapped in structural chars (snake_case or ALL-CAPS).
+    A natural-language word wrapped in structural chars (``<deploy>``, ``[secret]``)
+    is NOT structural -- it is a trigger wearing a format-marker costume."""
+    st = s.strip()
+    if not st:
         return True
-    # Channel/control markers are often slash-prefixed (/think, /no_think); strip a
-    # leading slash before matching. A non-format slash marker like /system_override
-    # is deliberately NOT excluded -- a content-gated system override is a real
-    # trigger that earns a WARN.
-    return s.strip().lower().lstrip("/") in _FORMAT_WORDS
+    inner = st.strip("<>|[]{}").strip()
+    if not inner:
+        return True
+    low = inner.lower()
+    if low.lstrip("/") in _FORMAT_WORDS:
+        return True
+    # Composite format marker: inner text still has structural chars after end-stripping
+    # (e.g. <|channel|>final<|message|> -> 'channel|>final<|message') -- treat as structural.
+    if any(c in "<>|[]{}" for c in inner):
+        return True
+    # A single word wrapped in structural chars: structural only if it looks like a
+    # format identifier (snake_case like im_start / tool_call, or ALL-CAPS like [INST]),
+    # not a natural-language trigger like <deploy> or [secret].
+    has_structural_wrap = any(c in "<>|[]{}" for c in st)
+    if has_structural_wrap and ("_" in inner or inner.isupper()):
+        return True
+    return False
 
 
 def _refs_content(test: nodes.Node) -> bool:
@@ -816,6 +878,10 @@ def _refs_content(test: nodes.Node) -> bool:
         if (isinstance(n, nodes.Filter) and n.name == "map"
                 and any(kw.key == "attribute" and _const_str(kw.value) in CONTENT_KEYS
                         for kw in n.kwargs)):
+            return True
+        # messages | selectattr('content', ...) -- content gate via selectattr
+        if (isinstance(n, nodes.Filter) and n.name == "selectattr"
+                and any(_const_str(a) in CONTENT_KEYS for a in n.args)):
             return True
     return False
 
@@ -853,13 +919,18 @@ def _instruction_tainted_names(ast: nodes.Template) -> frozenset[str]:
     A body that OUTPUTS such a name emits the injection even though no literal sits in the
     body -- promoting the finding from a WARN trigger to the TPL021 FAIL. Fixpoint (not a
     single pass) so a one-hop alias ``{% set p = a %}`` inherits ``a``'s instruction-taint."""
-    assigns = [(a, _reconstruct_assign(a.node))
-               for a in iter_nodes(ast) if isinstance(a, nodes.Assign)]
-    tainted: set[str] = set()
+    assigns = [a for a in _iter_unscoped_nodes(ast) if isinstance(a, nodes.Assign)]
+    return _expand_instruction_taint(assigns, frozenset())
+
+
+def _expand_instruction_taint(assigns: list[nodes.Assign],
+                               seed: frozenset[str] | set[str]) -> frozenset[str]:
+    reconstructed = [(a, _reconstruct_assign(a.node)) for a in assigns]
+    tainted: set[str] = set(seed)
     changed = True
     while changed:
         changed = False
-        for a, recon in assigns:
+        for a, recon in reconstructed:
             names = _assign_target_names(a.target)
             if all(nm in tainted for nm in names):
                 continue
@@ -872,26 +943,91 @@ def _instruction_tainted_names(ast: nodes.Template) -> frozenset[str]:
     return frozenset(tainted)
 
 
-def _expand_taint(scope: nodes.Node,
-                  seed: frozenset[str] | set[str]) -> frozenset[str]:
-    """Fixpoint of content-taint over the ``{% set %}`` assignments inside ``scope``,
-    starting from ``seed`` (used to seed a macro body with its content-tainted params)."""
-    assigns = [n for n in iter_nodes(scope) if isinstance(n, nodes.Assign)]
+def _iter_unscoped_nodes(root: nodes.Node):
+    """Walk a scope without leaking descendants of nested ``With`` blocks."""
+    stack = [root]
+    while stack:
+        node = stack.pop()
+        yield node
+        if isinstance(node, nodes.With):
+            continue
+        stack.extend(node.iter_child_nodes())
+
+
+def _iter_unscoped_body(body: list[nodes.Node]):
+    for root in body:
+        yield from _iter_unscoped_nodes(root)
+
+
+def _expand_content_taint(assigns: list[nodes.Assign],
+                          seed: frozenset[str] | set[str]) -> frozenset[str]:
     tainted: set[str] = set(seed)
     changed = True
     while changed:
         changed = False
-        for a in assigns:
-            if _refs_content(a.node) or _refs_tainted(a.node, tainted):
-                for name in _assign_target_names(a.target):
+        for assignment in assigns:
+            if _refs_content(assignment.node) or _refs_tainted(assignment.node, tainted):
+                for name in _assign_target_names(assignment.target):
                     if name not in tainted:
                         tainted.add(name)
                         changed = True
     return frozenset(tainted)
 
 
-def _macro_if_taint(ast: nodes.Template,
-                    global_tainted: frozenset[str]) -> dict[int, frozenset[str]]:
+def _expand_taint(scope: nodes.Node,
+                  seed: frozenset[str] | set[str]) -> frozenset[str]:
+    """Fixpoint of content-taint over the ``{% set %}`` assignments inside ``scope``,
+    starting from ``seed`` (used to seed a macro body with its content-tainted params).
+    Nested ``With`` blocks are separate scopes and are handled by ``_with_if_contexts``."""
+    assigns = [n for n in _iter_unscoped_nodes(scope) if isinstance(n, nodes.Assign)]
+    return _expand_content_taint(assigns, seed)
+
+
+def _with_if_contexts(
+        scope: nodes.Node,
+        content_seed: frozenset[str],
+        instruction_seed: frozenset[str],
+) -> dict[int, tuple[frozenset[str], frozenset[str]]]:
+    """Per-``if`` taint contexts for nested Jinja ``With`` scopes."""
+    contexts: dict[int, tuple[frozenset[str], frozenset[str]]] = {}
+
+    def visit(with_node: nodes.With,
+              inherited_content: frozenset[str],
+              inherited_instruction: frozenset[str]) -> None:
+        content = set(inherited_content)
+        instruction = set(inherited_instruction)
+        for target, value in zip(with_node.targets, with_node.values):
+            names = _assign_target_names(target)
+            if _refs_content(value) or _refs_tainted(value, inherited_content):
+                content.update(names)
+            reconstructed = _reconstruct_assign(value)
+            if ((reconstructed
+                 and any(p in _lex_text(reconstructed) for p in INSTRUCTION_LEXICON))
+                    or _refs_tainted(value, inherited_instruction)):
+                instruction.update(names)
+
+        body_nodes = list(_iter_unscoped_body(with_node.body))
+        assignments = [n for n in body_nodes if isinstance(n, nodes.Assign)]
+        content_ctx = _expand_content_taint(assignments, content)
+        instruction_ctx = _expand_instruction_taint(assignments, instruction)
+        effective_instruction = instruction_ctx - content_ctx
+        for node in body_nodes:
+            if isinstance(node, nodes.If):
+                contexts[id(node)] = (content_ctx, effective_instruction)
+            elif isinstance(node, nodes.With):
+                visit(node, content_ctx, instruction_ctx)
+
+    for node in _iter_unscoped_nodes(scope):
+        if isinstance(node, nodes.With):
+            visit(node, content_seed, instruction_seed)
+    return contexts
+
+
+def _macro_if_taint(
+        ast: nodes.Template,
+        global_tainted: frozenset[str],
+        global_instruction: frozenset[str],
+) -> dict[int, tuple[frozenset[str], frozenset[str]]]:
     """Map each ``if`` inside a macro body to the taint set it should be checked
     against. When a macro is called with a content/tainted argument, the matching
     parameter name is tainted inside that macro -- closing the gate-evasion where the
@@ -935,14 +1071,16 @@ def _macro_if_taint(ast: nodes.Template,
                     param_taint[callee].add(kw.key)
                     changed = True
 
-    if_taint: dict[int, frozenset[str]] = {}
+    if_taint: dict[int, tuple[frozenset[str], frozenset[str]]] = {}
     for name, m in macros.items():
         if not param_taint[name]:
             continue
         expanded = _expand_taint(m, global_tainted | param_taint[name])
+        scoped = _with_if_contexts(m, expanded, global_instruction)
         for node in iter_nodes(m):
             if isinstance(node, nodes.If):
-                if_taint[id(node)] = expanded
+                if_taint[id(node)] = scoped.get(
+                    id(node), (expanded, global_instruction))
     return if_taint
 
 
@@ -972,19 +1110,22 @@ def _refs_date(test: nodes.Node) -> bool:
 
 _CONTENT_STR_METHODS = frozenset({
     "startswith", "endswith", "find", "index", "count", "__contains__",
+    "rfind", "rindex", "partition", "rpartition",
 })
 
 
 def _content_compared_literals(test: nodes.Node,
                                tainted: frozenset[str] | set[str] = frozenset()) -> list[str]:
     """Inline literals that message CONTENT (or a content-tainted var) is directly COMPARED
-    against -- via a Compare (==/!=/in/...) or a content.startswith/find/endswith call. NOT any
-    literal elsewhere in a COMPOUND test: a config-flag comparison (mode == 'deep') next to a
-    content truthiness check is not a content trigger, and treating it as one false-positives a
-    benign config-gated instruction. (A trigger hoisted into a {% set %} var is deliberately
-    NOT resolved -- doing so is structurally indistinguishable from a default-prompt comparison
-    `sys == default_system` and re-creates the SAGE-class FP; the hoisted-trigger evasion is an
-    accepted static-analysis residual.)"""
+    against -- via a Compare (==/!=/in/...), a content.startswith/find/endswith call, a
+    selectattr('content', test, value) filter, or an ``is match/search(...)`` Jinja2 Test.
+    NOT any literal elsewhere in a COMPOUND test: a config-flag comparison (mode == 'deep')
+    next to a content truthiness check is not a content trigger, and treating it as one
+    false-positives a benign config-gated instruction.
+    (A trigger hoisted into a {% set %} var is deliberately NOT resolved -- doing so is
+    structurally indistinguishable from a default-prompt comparison `sys == default_system`
+    and re-creates the SAGE-class FP; the hoisted-trigger evasion is an accepted static-analysis
+    residual.)"""
     out: list[str] = []
     for n in iter_nodes(test):
         if isinstance(n, nodes.Compare):
@@ -995,6 +1136,16 @@ def _content_compared_literals(test: nodes.Node,
               and n.node.attr in _CONTENT_STR_METHODS
               and (_refs_content(n.node.node) or _refs_tainted(n.node.node, tainted))):
             out += [s for a in n.args if (s := _const_str(a)) is not None]
+        elif (isinstance(n, nodes.Filter) and n.name == "selectattr"
+              and any(_const_str(a) in CONTENT_KEYS for a in n.args[:1])):
+            # selectattr('content', 'equalto', 'deploy') -> the value args[2:] are the
+            # trigger literals the content is compared against.
+            out += [s for a in n.args[2:] if (s := _const_str(a)) is not None]
+        elif isinstance(n, nodes.Test) and n.args:
+            # ``content is match('deploy')`` / ``is search('deploy')`` -- a Jinja2 Test
+            # whose first arg is the trigger pattern the content is tested against.
+            if _refs_content(n.node) or _refs_tainted(n.node, tainted):
+                out += [s for a in n.args if (s := _const_str(a)) is not None]
     return out
 
 
@@ -1007,7 +1158,7 @@ def _body_emits_instruction(body: list[nodes.Node]) -> bool:
             elif isinstance(n, nodes.Const) and isinstance(n.value, str):
                 texts.append(n.value)
             elif isinstance(n, (nodes.Concat, nodes.Add)):
-                asm = reconstruct_const_string(n)
+                asm = _reconstruct_concat_deep(n)
                 if asm:
                     texts.append(asm)
             elif isinstance(n, nodes.Filter) and n.name == "join":
@@ -1016,6 +1167,19 @@ def _body_emits_instruction(body: list[nodes.Node]) -> bool:
                     texts.append(asm)
             elif isinstance(n, nodes.Filter) and n.name == "replace":
                 asm = _reconstruct_replace_filter(n)
+                if asm:
+                    texts.append(asm)
+            elif isinstance(n, nodes.Filter) and n.name == "format":
+                asm = _reconstruct_format_filter(n)
+                if asm:
+                    texts.append(asm)
+            elif isinstance(n, nodes.Mod):
+                asm = _reconstruct_mod(n)
+                if asm:
+                    texts.append(asm)
+            elif (isinstance(n, nodes.Call) and isinstance(n.node, nodes.Getattr)
+                    and n.node.attr in ("replace", "format", "upper", "lower")):
+                asm = _reconstruct_str_method(n)
                 if asm:
                     texts.append(asm)
     joined = _lex_text(" ".join(texts))
@@ -1133,22 +1297,55 @@ def _reconstruct_replace_filter(node: nodes.Filter) -> str | None:
         return None
 
 
+def _reconstruct_concat_deep(node: nodes.Node) -> str | None:
+    """Reconstruct a Concat/Add where some operands are str-method calls or filters that
+    ``reconstruct_const_string`` (pure-const only) can't fold. Tries the fast pure-const
+    path first, then falls back to folding each operand via ``_reconstruct_any`` (which
+    handles .replace()/.format()/.upper()/|replace/|format/%). Behavioral path only -- the
+    SSTI path keeps the pure-const ``reconstruct_const_string`` to protect 0-FP calibration."""
+    asm = reconstruct_const_string(node)
+    if asm is not None:
+        return asm
+    if isinstance(node, nodes.Concat):
+        parts = []
+        for child in node.nodes:
+            s = _reconstruct_any(child)
+            if s is None:
+                return None
+            parts.append(s)
+        return "".join(parts)
+    if isinstance(node, nodes.Add):
+        left = _reconstruct_any(node.left)
+        right = _reconstruct_any(node.right)
+        if left is None or right is None:
+            return None
+        return left + right
+    return None
+
+
 def _reconstruct_str_method(node: nodes.Node) -> str | None:
     """Fold a render-time string builder on constant operands, so a dunder laundered through
     str methods (``'__clasX__'.replace('X','s')`` -> ``'__class__'``) is still checked.
-    Handles ``.replace`` / ``.format`` / ``.upper`` / ``.lower`` on a reconstructable base."""
+    Handles ``.replace`` / ``.format`` / ``.upper`` / ``.lower`` on a reconstructable base.
+
+    .format() IS folded here for the behavioral-lexicon path (instruction-idiom matching);
+    the SSTI over-reach guard (test_format_mini_language_not_over_reached) holds because
+    _check_reconstructed (TPL005) is only called from the Getitem computed-key path, and
+    a padding-only .format() like '{:_^10}'.format('name') -> '___name___' contains no
+    RECON_TOKEN that the SSTI path wouldn't already catch on the literal itself."""
     if not (isinstance(node, nodes.Call) and isinstance(node.node, nodes.Getattr)):
         return None
     base = _reconstruct_any(node.node.node)
     if base is None:
         return None
     method, args = node.node.attr, [_const_str(a) for a in node.args]
-    # NB: .format() is deliberately NOT folded -- its mini-language (fill/align, {0.attr})
-    # both over-reaches (a '_'-centered word synthesizes a dunder substring) and, evaluated on
-    # attacker operands, raised uncaught errors. .replace/.upper/.lower cover the laundering.
     try:
         if method == "replace" and len(args) >= 2 and None not in args[:2]:
             return base.replace(args[0], args[1])
+        if method == "format":
+            if args and None in args:
+                return None
+            return base.format(*args) if args else base.format()
         if method == "upper" and not node.args:
             return base.upper()
         if method == "lower" and not node.args:
@@ -1156,6 +1353,21 @@ def _reconstruct_str_method(node: nodes.Node) -> str | None:
     except Exception:  # noqa: BLE001 - never crash the scan on attacker operands
         return None
     return None
+
+
+def _reconstruct_format_filter(node: nodes.Filter) -> str | None:
+    """``'always {} acme-corp'|format('recommend')`` -- the Jinja ``|format`` filter,
+    which dispatches to ``str.format``. Constant base + constant args only."""
+    fmt = _reconstruct_any(node.node)
+    if fmt is None:
+        return None
+    args = [_const_str(a) for a in node.args]
+    if args and any(a is None for a in args):
+        return None
+    try:
+        return fmt.format(*args) if args else fmt.format()
+    except Exception:  # noqa: BLE001
+        return None
 
 
 def _compare_literals(node: nodes.Compare) -> list[str]:

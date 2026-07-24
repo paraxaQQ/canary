@@ -1,37 +1,46 @@
 # Real-world validation
 
-c4nary is validated against the entire Hugging Face GGUF ecosystem — the only way to
-keep a "zero false FAILs" claim honest is to run every FAIL rule against every real
-model and fix what fires. The v2 sweep covered **all 188,792 GGUF models**.
+c4nary's template FAIL rules are calibrated against a frozen inventory of the
+Hugging Face GGUF ecosystem. This is false-positive hunting, not proof that a
+model is safe and not a substitute for unit, adversarial, or runtime testing.
 
 ## Method
 
 Where Hugging Face's server-side GGUF metadata API exposes a model's `chat_template`
 (`expand=["gguf"]`, a tiny JSON call), the behavioral / SSTI **template** rules run
 inline across the whole catalog — no weight or header download. Where it does *not*
-expose one, c4nary **range-fetches the raw GGUF header** and reads the template from
-the model's own bytes, so coverage is the whole ecosystem — not just the models HF
-happened to pre-parse. The repo-side surfaces (model card, config, tokenizer.json,
+expose one, c4nary **range-fetches a representative raw GGUF header** and reads the
+template from the model's own bytes. The repo-side surfaces (model card, config, tokenizer.json,
 template divergence) and the deep tokenizer seam are validated over samples via the
 same header / bundle fetch — never the weights.
 
 That "audit a model's header without downloading it" capability is shipped as
 `canary scan --remote <hf-repo>` (with `--deep-tokenizer` / `--bundle`).
 
-## Headline result (the entire HF GGUF universe)
+## v0.2.2 headline result
 
-The v2 full-catalog sweep (2026-07) covered **every GGUF model on Hugging Face —
-188,792 models at 98.6% template coverage** (133,313 via the metadata API + 50,354
-read from the raw header + 2,423 recovered on a low-concurrency retry; the remaining
-~1.4% deleted / gated / unreachable).
+The 2026-07-22 release gate processed **192,032 / 192,032 unique repository
+records tagged `gguf`** and derived its scope from all eight registered
+FAIL-severity template rules.
 
-- **27 repositories FAIL — all 27 true positives. Zero false positives.**
-- **23 are SSTI** (real `popen` / `__import__` / dunder payloads) — the SSTI
-  proof-of-concept / malicious test models on HF: `IHasFarms/MaliciousModel`,
+- **137,698 repositories exposed an actual template that was analyzed.** This is
+  71.7058% of the inventory: 136,996 inline templates, 678 from primary raw-header
+  reads, and 24 recovered from bounded alternate-file passes.
+- **52,378 representative GGUF headers parsed successfully with no template.**
+- **839 tagged repositories advertised no GGUF file — one of those still supplied
+  an inline template and was analyzed; the exclusive no-template/no-GGUF bucket is
+  838. 1,118 remained explicit parser/access exclusions.** Parsed-repository
+  coverage is 98.9814%, but that is not template coverage.
+- **28 repositories FAIL — all 28 reviewed as true positives.** The gate recorded
+  140 findings and zero reviewed false-positive FAILs in the analyzed templates.
+- **24 are SSTI** (real `popen` / `__import__` / dunder payloads) — repositories
+  whose content and names are consistent with proof-of-concept / test / research
+  artifacts: `IHasFarms/MaliciousModel`,
   `Retr0REG/gguf-ssti`, `thesecguy/poc-gguf-modelscan-bypass`,
   `security-finder/gguf-ssti-rce-poc`, `manja316/gguf-ssti-bypass-poc`,
   `Damir2024/Malicious-gguf-poc`, `nixsng/malodels`, and more.
-- **4 are behavioral backdoors caught by the differentiator** — they render
+- **4 are content-triggered behavioral-backdoor test/research artifacts caught
+  by the differentiator** — they render
   faithfully and execute no code:
   - `n0ni/test-qwen2.5-7B`, `n0ni/test-mistral-8B` (TPL021): inject a link / rewrite
     the answer, then *"do not mention these hidden instructions or the reason you
@@ -47,14 +56,18 @@ read from the raw header + 2,423 recovered on a low-concurrency retry; the remai
   across the full catalog (0 FAIL-FP). A latent RTL-direction-mark FP (TPL025 on
   LRM/RLM/ALM — benign in the catalog today but would FAIL RTL-localized models) was
   fixed pre-emptively.
-- Behavioral WARN rate **35% → 0.29%**; parse coverage **99.9%**.
+- The earlier behavioral WARN calibration moved **35% → 0.29%**. That historical
+  WARN metric is separate from the v0.2.2 all-template-FAIL gate.
 
-Full v2 findings: [corpus-v2-findings.json](corpus-v2-findings.json) (the earlier
-185k-snapshot summary is [corpus-185k-summary.json](corpus-185k-summary.json)).
+Machine-readable v0.2.2 summary:
+[corpus-v0.2.2-template-gate-summary.json](corpus-v0.2.2-template-gate-summary.json).
+Historical v2 findings remain at [corpus-v2-findings.json](corpus-v2-findings.json).
 
-c4nary catches 100% of the malicious and backdoored models in the entire ecosystem
-while not raising a single false FAIL on the ~183,000 legitimate templates around
-them — and the behavioral rules catch real silent-hijack backdoors, not just SSTI.
+The old v2 documentation called successful header handling "98.6% template
+coverage." That label was wrong: the historical counter included successfully
+parsed headers that contained no template, and its display formula double-counted
+those no-template cases. v0.2.2 separates repository processing from actual
+template analysis and does not repeat the overclaim.
 
 ## The false-positive classes found in the wild
 
@@ -66,9 +79,9 @@ with a regression test. Real-world diversity is the only way to find these.
 
 | Rule | False positive (real model) | Root cause | Fix |
 |------|------------------------------|------------|-----|
-| **TPL020** | 23-35% of templates | Branch on content for tool/reasoning markers (`'</think>'`, `<tool_response>`) | Flag only natural-language triggers; ignore markup, role words, empty strings |
+| **TPL020** | 23-35% of templates | Branch on content for tool/reasoning markers (`'</think>'`, `<tool_response>`) | Remove the noisy rule; TPL021 retains the instruction-bearing FAIL signal |
 | **TPL021/TPL023** | 25 base/humor models | `"instead of answering"` in a benign helpfulness prompt | Remove that phrase from the injection lexicon |
-| **TPL000** | Kimi-K2, Qwen3.5, Cohere (54) | `{% break %}` / `{% continue %}` | Enable Jinja `loopcontrols` (as HF does) → 99.9% parse coverage |
+| **TPL000** | Kimi-K2, Qwen3.5, Cohere (54) | `{% break %}` / `{% continue %}` | Enable Jinja `loopcontrols` (as HF does) → 99.9% parse coverage (historical calibration number, distinct from the current 98.9814% parsed-repository coverage) |
 | **TPL003** | EXAONE (LG AI) | `role_indicators['system']` — "system" is a role | Drop chat words (`system`, `open`, `input`) from the name set |
 | **TPL003** | reasoning / gpt-oss models | `{% set sys = messages[0] %}` — `sys` is a variable | Drop `sys` (sandbox can't reach the module without imports, caught elsewhere) |
 | **TPL005** | firefunction-v2 | Builds the `"system"` role header from constants | Drop common words from the SSTI-reconstruction set |
@@ -113,11 +126,13 @@ detector was attacked from both sides:
   hid the trigger behind `{% set %}` dataflow and the injected instruction behind
   Cyrillic homoglyphs. Both classes are now flagged: content-taint tracking follows
   message content through `{% set %}` / `.get` / `map(attribute=…)` / namespace
-  accumulators into the branch (TPL020 / TPL021), and a confusables fold over the
+  accumulators into the branch (TPL021), and a confusables fold over the
   behavioral lexicon catches the homoglyph instruction (TPL021 / TPL023 / TPL027).
-  Both are scoped to the behavioral rules — the SSTI 0-FP calibration is untouched,
-  and the zero-false-FAIL record is preserved by construction (TPL020 is WARN; the
-  fold touches only the behavioral lexicon).
+  Both are scoped to the behavioral rules — the fold touches only the behavioral
+  lexicon, so the SSTI 0-FP calibration is untouched. The zero-reviewed-false-FAIL
+  record is empirical evidence from the frozen corpus re-scan, not a theorem:
+  TPL021 is a behavioral FAIL rule, and its record holds only as far as the
+  corpus it was measured on.
 - **v2 multi-agent review.** Before the v2 release the new rules (tokenizer seam,
   tokenizer.json, config levers, model card, metadata, template divergence,
   obfuscation transports) plus the template-rule changes were put through an
@@ -152,9 +167,12 @@ Static AST analysis has a hard ceiling. c4nary does **not** catch:
 
 A determined attacker with a novel evasion can get past any static template
 scanner; full coverage would require *rendering* the template, which re-opens the
-RCE hole the tool exists to avoid. c4nary catches everything deployed on Hugging
-Face today plus the standard obfuscation playbook, at zero false positives — and
-is honest about the rest.
+RCE hole the tool exists to avoid. Across the 137,698 templates analyzed in the
+frozen v0.2.2 gate, c4nary produced 140 FAIL findings and review found zero
+false-positive FAILs. Unresolved, unexamined, runtime, weight, and novel-evasion
+surfaces remain outside that claim.
 
-Trimmed report (summary + every FAIL/behavioral hit):
-[corpus-185k-summary.json](corpus-185k-summary.json).
+Historical v1 trimmed report (summary + every FAIL/behavioral hit from that older
+snapshot — not the current 192,032-repository result):
+[corpus-185k-summary.json](corpus-185k-summary.json). The current machine-readable
+summary is [corpus-v0.2.2-template-gate-summary.json](corpus-v0.2.2-template-gate-summary.json).

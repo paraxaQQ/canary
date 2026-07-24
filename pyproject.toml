@@ -1,19 +1,15 @@
 [build-system]
-requires = ["setuptools>=61.0"]
+requires = ["setuptools>=77.0"]
 build-backend = "setuptools.build_meta"
 
-# ---------------------------------------------------------------------------
-# Naming is intentionally confined to this file + the console entry point so a
-# rebrand stays a one-line change (see spec §10). Distribution/import package:
-# "c4nary"; the user-facing command is "canary".
-# ---------------------------------------------------------------------------
 [project]
 name = "c4nary"
-version = "0.2.1"
-description = "Deterministic, offline, read-only backdoor auditor for GGUF models: statically audits every controllable surface (chat template, tokenizer, model card, config, metadata) without rendering the template or reading weights."
+version = "0.2.2"
+description = "Deterministic, read-only static auditor for GGUF chat templates, tokenizer metadata, model cards, configuration, and structural consistency."
 readme = "README.md"
 requires-python = ">=3.10"
-license = { text = "MIT" }
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [{ name = "Actual Intelligence LLC" }]
 keywords = ["gguf", "security", "backdoor", "ssti", "jinja2", "chat-template",
             "tokenizer", "model-card", "supply-chain", "audit"]
@@ -21,13 +17,27 @@ classifiers = [
   "Development Status :: 4 - Beta",
   "Environment :: Console",
   "Intended Audience :: Developers",
+  "Operating System :: OS Independent",
   "Topic :: Security",
   "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
 ]
 dependencies = ["jinja2>=3.0"]
 
+[project.urls]
+Homepage = "https://github.com/paraxaQQ/canary"
+Repository = "https://github.com/paraxaQQ/canary"
+Issues = "https://github.com/paraxaQQ/canary/issues"
+Changelog = "https://github.com/paraxaQQ/canary/blob/main/CHANGELOG.md"
+Security = "https://github.com/paraxaQQ/canary/security/policy"
+
 [project.optional-dependencies]
-dev = ["pytest>=7.0"]
+dev = ["pytest>=7.0", "requests>=2.25"]
 remote = ["requests>=2.25"]
 mcp = ["mcp>=1.2"]
 

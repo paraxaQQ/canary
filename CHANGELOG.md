@@ -2,16 +2,62 @@
 
 ## Unreleased
 
+## 0.2.2 — 2026-07-23
+
 ### Security
 - Scope `HF_TOKEN` authentication to the exact `huggingface.co` host so direct remote-scan
   URLs cannot receive the credential.
 - Stream repo-bundle files under a hard byte cap and reject oversized responses instead of
   buffering the complete body before truncation.
+- Close template trigger-camouflage and instruction-laundering paths involving string
+  formatting, replacement, partition/search operations, scoped assignments, and Jinja tests.
+
+### Detection
+- Add WARN rules for forced output tokens (`CFG003`), custom-code mappings (`CFG004`),
+  extreme decode-time steering (`CFG005`), and reachable instruction-bearing special tokens
+  (`NRM003`).
+- Remove noisy content-branch rule `TPL020`; retain FAIL-level content-gated instruction
+  detection in `TPL021` and instruction laundering in `TPL027`.
+- Retire the proposed `MET022` / `MET023` tokenizer warnings before release because their
+  metadata did not establish malicious behavior.
+- Audit `processor_config.json` chat templates in the bundle scan: multimodal models
+  (LLaVA, Qwen-VL) can carry a divergent template there that a
+  `tokenizer_config.json`-only audit never sees.
+
+### False positives
+- Narrow `TPL002` to Jinja gadget chains that actually reach Python globals. Bare capability
+  checks such as `lipsum is defined` no longer FAIL; canonical
+  `lipsum.__globals__` / `cycler.__init__.__globals__` payloads remain detected.
+
+### Validation
+- Add a resumable release-gate harness whose template FAIL scope is derived from the rule
+  registry instead of a hand-maintained subset.
+- Add metadata-only GGUF parsing for corpus template recovery without parsing tensor
+  descriptor tables.
+- Stream escalating GGUF header prefixes through one bounded request and parse headers in a
+  rate-paced process pool, avoiding overlapping downloads and the thread-pool GIL bottleneck.
+- Run all eight registered template FAIL rules over a frozen 192,032-repository inventory:
+  137,698 actual templates analyzed, 140 findings across 28 repositories, and zero reviewed
+  false-positive FAILs. Retain 1,118 unresolved parser/access cases as explicit exclusions.
+- Correct the old coverage label: successfully parsed no-template headers count toward
+  parsed-repository coverage, not template coverage.
+
+### Packaging
+- Add Python 3.14 to the CI matrix and trove classifiers.
+- Add a CI package job: build, `twine check`, extracted-sdist test run, wheel smoke test.
+- Ship `SECURITY.md`, the release-gate tools (`tools/template_fail_gate.py`,
+  `tools/release_gate_scan.py`), and the machine-readable corpus summary
+  (`docs/corpus-v0.2.2-template-gate-summary.json`) in the source distribution.
+- Add PyPI project URLs and SPDX license metadata (`license = "MIT"`).
 
 ### Repository
 - Add a security reporting policy and Dependabot update configuration.
 - Pin GitHub Actions to immutable commit SHAs.
 - Exercise the installed MCP extra and a real stdio protocol round-trip in CI.
+- Harden local artifact, credential, coverage, and release-output ignore rules.
+- Add complete PyPI project links and Python-version classifiers.
+- Make the development extra complete for clean-environment gate-tool tests and add
+  wheel/sdist build, metadata, and installed-command checks to CI.
 
 ## 0.2.1 — 2026-07-06
 
@@ -63,9 +109,10 @@ the template, reading weights, or (at the core) touching the network.
   hash / rules.
 
 ### Changed
-- Full-catalog validation: **188,792 models at 98.6% template coverage** (raw-header
-  fetch where HF's metadata API omits the template), **27 flagged repos, 0 false
-  positives.** The v2 rules also went through an adversarial multi-agent review.
+- Historical full-catalog validation reported **188,792 models at 98.6% template
+  coverage**, **27 flagged repos, 0 false positives**. v0.2.2 corrects that coverage
+  label because the old calculation included parsed headers with no template and
+  double-counted those records. The v2 rules also went through an adversarial review.
 - **TPL021** — a content-gated injection now FAILs only under a *specific trigger
   literal* (fixes a full-catalog false positive on default identity prompts emitted
   under an emptiness gate).

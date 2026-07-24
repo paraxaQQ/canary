@@ -5,7 +5,13 @@ import struct
 import pytest
 from _ggufgen import write_gguf
 
-from c4nary.parser import GGUFParseError, MetaArray, parse_gguf
+from c4nary.parser import (
+    GGUFParseError,
+    MetaArray,
+    extract_gguf_chat_template_bytes,
+    parse_gguf,
+    parse_gguf_metadata_bytes,
+)
 
 
 def test_roundtrip_metadata_and_tensors(tmp_path):
@@ -47,6 +53,41 @@ def test_chat_template_property(tmp_path):
         "tokenizer.chat_template": "{{ messages }}",
     })
     assert parse_gguf(p).chat_template == "{{ messages }}"
+
+
+def test_metadata_only_bytes_do_not_require_tensor_table(tmp_path):
+    tensor_name = "tensor-name-that-is-not-in-metadata"
+    p = write_gguf(
+        tmp_path / "m.gguf",
+        {"tokenizer.chat_template": "{{ messages }}"},
+        tensors=[(tensor_name, (2, 2), 0)],
+    )
+    data = p.read_bytes()
+    metadata_end = data.index(tensor_name.encode("utf-8")) - 8
+
+    with pytest.raises(GGUFParseError):
+        parse_gguf_metadata_bytes(data[:metadata_end - 1])
+    model = parse_gguf_metadata_bytes(data[:metadata_end])
+
+    assert model.chat_template == "{{ messages }}"
+    assert model.tensor_count == 1
+    assert model.tensors == ()
+    assert model.data_start == 0
+
+
+def test_chat_template_extractor_skips_large_vocab(tmp_path):
+    p = write_gguf(
+        tmp_path / "m.gguf",
+        {
+            "tokenizer.ggml.tokens": [f"token-{i}" for i in range(10_000)],
+            "tokenizer.chat_template": "{{ messages }}",
+        },
+    )
+    data = p.read_bytes()
+
+    assert extract_gguf_chat_template_bytes(data) == "{{ messages }}"
+    with pytest.raises(GGUFParseError):
+        extract_gguf_chat_template_bytes(data[: len(data) // 2])
 
 
 def test_bad_magic_raises(tmp_path):

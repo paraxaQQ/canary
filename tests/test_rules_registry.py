@@ -15,6 +15,11 @@ def test_rule_ids_unique():
     assert len(ids) == len(set(ids))
 
 
+def test_speculative_tokenizer_rules_are_not_shipped():
+    ids = {r.rule_id for r in all_rules()}
+    assert {"MET022", "MET023"}.isdisjoint(ids)
+
+
 def test_finding_rejects_unregistered_id():
     with pytest.raises(KeyError):
         finding("NOPE999", "detail")
