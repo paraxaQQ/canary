@@ -7,7 +7,7 @@ command is deterministic and every finding cites a stable rule id.
 ## Install
 
 ```sh
-pip install c4nary[remote]
+pip install "c4nary[remote]"
 # or from source:  git clone https://github.com/paraxaQQ/canary && cd canary && pip install ".[remote]"
 ```
 
@@ -53,7 +53,7 @@ It separates actual templates analyzed from parsed no-template repositories and
 explicit exclusions. Historical v2 findings remain in
 [corpus-v2-findings.json](corpus-v2-findings.json).
 The red-team evasion corpus is in `tools/evasions.json`; the regression harness is
-`tools/verify.py`. Clone and run the suite:
+the test suite itself. Clone and run it:
 
 ```sh
 git clone https://github.com/paraxaQQ/canary && cd canary
