@@ -92,7 +92,8 @@ def sha256_file(path: Path) -> str:
 
 def source_sha256(root: Path) -> str:
     digest = hashlib.sha256()
-    paths = sorted(root.joinpath("c4nary").rglob("*.py"))
+    pkg = root.joinpath("c4nary")
+    paths = sorted([*pkg.rglob("*.py"), *pkg.rglob("*.jinja")])
     paths.extend([root / "pyproject.toml", Path(__file__).resolve()])
     for path in paths:
         relative = path.relative_to(root) if path.is_relative_to(root) else path.name

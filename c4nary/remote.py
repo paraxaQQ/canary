@@ -42,8 +42,12 @@ def _requests():
 def _auth_headers(url: str) -> dict[str, str]:
     """Bearer auth from ``HF_TOKEN`` if set -- authenticated fetches get a much higher
     rate limit (bulk header scans throttle hard unauthenticated). Opt-in via env; when
-    unset the headers are empty and behavior is unchanged."""
-    if urlsplit(url).hostname != "huggingface.co":
+    unset the headers are empty and behavior is unchanged.
+
+    Scheme is part of the scope, not just the host: an ``http://huggingface.co/...`` URL
+    would otherwise put the bearer on the wire in cleartext."""
+    parts = urlsplit(url)
+    if parts.scheme != "https" or parts.hostname != "huggingface.co":
         return {}
     token = os.environ.get("HF_TOKEN")
     return {"Authorization": f"Bearer {token}"} if token else {}

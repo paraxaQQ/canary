@@ -95,6 +95,13 @@ def test_huggingface_url_receives_hf_token(monkeypatch):
     assert session.calls[0][1]["headers"]["Authorization"] == "Bearer secret"
 
 
+def test_cleartext_huggingface_url_never_receives_hf_token(monkeypatch):
+    """A scheme downgrade must not put the bearer on the wire in plaintext."""
+    monkeypatch.setenv("HF_TOKEN", "secret")
+
+    assert remote._auth_headers("http://huggingface.co/org/repo/model.gguf") == {}
+
+
 def test_fetch_repo_text_streams_and_rejects_oversize(monkeypatch):
     response = _Response([b"abc", b"def"])
     session = _Session(response)

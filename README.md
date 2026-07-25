@@ -197,7 +197,7 @@ tensor map) from Hugging Face — never the multi-GB weights — and runs the
 template / metadata / tokenizer rules. Useful for triaging models at the source.
 
 ```sh
-pip install c4nary[remote]                       # one extra dep: requests
+pip install "c4nary[remote]"                     # one extra dep: requests
 canary scan --remote unsloth/Llama-3.2-1B-Instruct-GGUF
 canary scan --remote bartowski/Qwen2.5-7B-Instruct-GGUF --file Qwen2.5-7B-Instruct-Q4_K_M.gguf
 canary scan --remote https://huggingface.co/org/repo/resolve/main/model.gguf --json
@@ -275,7 +275,7 @@ hold unchanged: parse-only, read-only, deterministic; the sole network path is
 the opt-in `scan(remote=True)`.
 
 ```sh
-pip install c4nary[mcp]        # one extra dep: the MCP SDK
+pip install "c4nary[mcp]"      # one extra dep: the MCP SDK
 c4nary-mcp                     # stdio server; or: python -m c4nary.mcp_server
 ```
 

@@ -46,7 +46,8 @@ RESOLVER_LIMITER = RequestRateLimiter(14.0)
 
 def source_sha256(root: Path) -> str:
     digest = hashlib.sha256()
-    paths = sorted(root.joinpath("c4nary").rglob("*.py"))
+    pkg = root.joinpath("c4nary")
+    paths = sorted([*pkg.rglob("*.py"), *pkg.rglob("*.jinja")])
     paths.extend([
         root / "pyproject.toml",
         root / "tools" / "release_gate_scan.py",
