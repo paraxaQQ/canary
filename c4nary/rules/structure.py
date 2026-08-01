@@ -53,8 +53,12 @@ def _tensor_checks(model: GGUFModel) -> list[Finding]:
     fs = model.file_size
     ds = model.data_start
 
-    for t in model.tensors:
+    for index, t in enumerate(model.tensors):
         loc = t.name or "<tensor>"
+        # Tensor names are attacker-controlled and need not be unique (INT005 flags
+        # duplicates), so the name alone does not identify an occurrence and two
+        # same-named tensors would share one fingerprint.
+        subject = f"tensor#{index}"
 
         # STR001 - element-count / byte-size overflow (computed in bignums).
         ne = ne_product(t.shape)
@@ -64,7 +68,7 @@ def _tensor_checks(model: GGUFModel) -> list[Finding]:
                 "STR001",
                 f"tensor {t.name!r} element count/size overflows int64 "
                 f"(ne={ne}, shape={t.shape}).",
-                location=loc))
+                location=loc, subject=subject))
 
         # STR003 - data offset (plus computed size) within the file.
         start = ds + t.offset
@@ -73,19 +77,19 @@ def _tensor_checks(model: GGUFModel) -> list[Finding]:
                 "STR003",
                 f"tensor {t.name!r} data starts at {start} which is past EOF "
                 f"(file_size={fs}).",
-                location=loc))
+                location=loc, subject=subject))
         elif nb is not None and start + nb > fs:
             findings.append(finding(
                 "STR003",
                 f"tensor {t.name!r} data [{start}, {start + nb}) extends past EOF "
                 f"(file_size={fs}).",
-                location=loc))
+                location=loc, subject=subject))
 
         # STR006 - zero / non-block-divisible dimension.
         if t.shape and any(d == 0 for d in t.shape):
             findings.append(finding(
                 "STR006", f"tensor {t.name!r} has a zero dimension {t.shape}.",
-                location=loc))
+                location=loc, subject=subject))
         else:
             bs = ggml_block_size(t.type_id)
             if bs and bs > 1 and t.shape and t.shape[0] % bs != 0:
@@ -93,14 +97,14 @@ def _tensor_checks(model: GGUFModel) -> list[Finding]:
                     "STR006",
                     f"tensor {t.name!r} innermost dim {t.shape[0]} is not a "
                     f"multiple of the {t.dtype} block size {bs}.",
-                    location=loc))
+                    location=loc, subject=subject))
 
         # STR007 - unknown ggml type (byte size unknown, untested loader path).
         if t.dtype.startswith("GGML_TYPE_"):
             findings.append(finding(
                 "STR007",
                 f"tensor {t.name!r} uses unknown ggml type id {t.type_id}.",
-                location=loc))
+                location=loc, subject=subject))
 
         # STR008 - abusive tensor name.
         reasons = _name_problems(t.name)
@@ -108,7 +112,7 @@ def _tensor_checks(model: GGUFModel) -> list[Finding]:
             findings.append(finding(
                 "STR008",
                 f"tensor name {t.name!r} is suspicious: {', '.join(reasons)}.",
-                location=loc))
+                location=loc, subject=subject))
 
     return findings
 

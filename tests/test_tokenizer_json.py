@@ -69,3 +69,23 @@ def test_nrm002_benign_special_tokens_clean():
     assert analyze_special_tokens(
         {"bos_token": "<s>",
          "additional_special_tokens": ["<|im_start|>", "<|im_end|>"]}) == []
+
+
+def test_deeply_nested_tokenizer_json_fails_closed_not_crashed():
+    """A ~7 KB attacker-authored tokenizer.json must not abort the scan.
+
+    The reader cap is 48 MiB but JSON nesting is unbounded, so the recursive walkers
+    blew the stack five orders of magnitude under the cap. An uncaught RecursionError
+    left stdout empty at exit 1 -- the code this tool's own table defines as "WARN
+    findings present".
+    """
+
+    from c4nary.rules.tokenizer_json import analyze_special_tokens, analyze_tokenizer_json
+
+    deep = inner = {}
+    for _ in range(2000):
+        inner["n"] = inner = {}
+    payload = {"normalizer": deep, "post_processor": deep}
+
+    assert analyze_tokenizer_json(payload) == []
+    assert analyze_special_tokens(payload) == []

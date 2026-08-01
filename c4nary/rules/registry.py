@@ -8,6 +8,7 @@ The ``rules`` subcommand prints this table.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 
 from ..report import FAIL, INFO, WARN, Finding
@@ -39,7 +40,8 @@ _RULES: tuple[Rule, ...] = (
          "(os, subprocess, popen, system, eval, exec, getattr, __import__, ...)."),
     Rule("TPL004", FAIL, "Abusable attribute filter",
          "Use of the |attr filter or map('attr'), which bypasses Jinja2's "
-         "attribute-access sandbox and is a known SSTI primitive."),
+         "attribute-access sandbox through 3.1.5 (CVE-2025-27516) and remains "
+         "a known SSTI primitive."),
     Rule("TPL005", FAIL, "Reconstructed dangerous token via string ops",
          "Adjacent string literals combine (via ~, +, or |join) to spell a "
          "dangerous token such as 'popen' or '__globals__' - a common way to "
@@ -171,10 +173,10 @@ _RULES: tuple[Rule, ...] = (
          "The deep tokenizer pass materialized the full vocab and reports the count of "
          "reachable role/turn special surfaces (whitespace and reserved / padding tokens "
          "excluded). Informational; confirms the seam pass executed."),
-    # TOK010 (NORMAL-at-seam) was calibrated OUT (~6% FP, incl. Gemma): a single-token
-    # NORMAL delimiter still tokenizes to its dedicated id -- Gemma's <start_of_turn>
-    # (id 106, NORMAL) proves it -- so it is NOT a broken boundary. TOK011/013/014 and the
-    # confusable-MISMATCH reachability confirmation are encoder/runtime-gated (Piece B / v3).
+    # The NORMAL-at-seam candidate was calibrated OUT (~6% FP, incl. Gemma): a
+    # single-token NORMAL delimiter still tokenizes to its dedicated id -- Gemma's
+    # <start_of_turn> (id 106, NORMAL) proves it -- so it is NOT a broken boundary.
+    # Other mismatch checks need encoder/runtime reachability confirmation (Piece B / v3).
     # ---- Structural / parser-exploitation (STR) -------------------------- #
     Rule("STR001", FAIL, "Tensor element-count / size overflow",
          "A tensor's element count or byte size overflows a signed 64-bit value, "
@@ -228,10 +230,10 @@ _RULES: tuple[Rule, ...] = (
          "BOS and EOS are evaluated independently at their actual generation positions. "
          "Manual review, not proof of malice."),
     Rule("CFG004", WARN, "Custom code loading via auto_map",
-         "config.json declares auto_map, which instructs transformers to load custom "
-         "Python modeling code from the repo (trust_remote_code=True). A backdoored "
-         "modeling file executes arbitrary code on load. Manual review of the modeling "
-         "files recommended."),
+         "config.json, tokenizer_config.json, processor_config.json, or "
+         "preprocessor_config.json declares auto_map, which instructs transformers to "
+         "load custom Python code from the repo (trust_remote_code=True). A backdoored "
+         "file executes arbitrary code on load. Manual review recommended."),
     Rule("CFG005", WARN, "Decode-time steering anomaly",
          "generation_config has an extreme decode-time steering parameter (extreme "
          "repetition_penalty, or no_repeat_ngram_size=1 which prevents any token from "
@@ -262,6 +264,25 @@ _RULES: tuple[Rule, ...] = (
          "tokenizer.json added_tokens) contains imperative instruction idioms (ignore "
          "previous, always recommend, do not mention ...) and is reachable through a declared "
          "BOS/EOS insertion or tokenizer post-processor. Heuristic; manual review, not proof."),
+    # ---- trust_remote_code Python source (RMT, opt-in bundle scan) ------- #
+    Rule("RMT000", WARN, "Custom Python source could not be fully audited",
+         "An auto_map Python source was oversized, truncated, or failed ast.parse. "
+         "The source was not fully audited; manual review is required."),
+    Rule("RMT001", INFO, "Cross-repository auto_map target not fetched",
+         "An auto_map reference names another repository. c4nary records the boundary but "
+         "does not fetch cross-repository Python code during the bundle scan."),
+    Rule("RMT010", WARN, "Import-time execution sink in custom Python",
+         "Custom Python selected by auto_map reaches a built-in or imported process/code "
+         "execution sink during module, class, decorator, or default-argument evaluation. "
+         "Static import-time scope only; manual review, not proof of malice."),
+    Rule("RMT011", WARN, "Import-time native or environment capability",
+         "Custom Python selected by auto_map reaches a native-library, subprocess-probe, "
+         "socket, or dynamic-import capability during import-time evaluation. These uses "
+         "can be legitimate in custom-kernel repositories; manual review is required."),
+    Rule("RMT020", WARN, "Decoded content reaches an execution sink",
+         "Custom Python decodes base/hex-like content and passes the result to an execution "
+         "sink during import-time evaluation. This composition hides the executed source; "
+         "manual review is required."),
 )
 
 _BY_ID: dict[str, Rule] = {r.rule_id: r for r in _RULES}
@@ -278,19 +299,38 @@ def get_rule(rule_id: str) -> Rule:
         raise KeyError(f"unregistered rule id: {rule_id!r}") from None
 
 
-def finding(rule_id: str, detail: str, location: str | None = None) -> Finding:
+def finding(
+    rule_id: str,
+    detail: str,
+    location: str | None = None,
+    *,
+    artifact: str | None = None,
+    line: int | None = None,
+    subject: str | None = None,
+) -> Finding:
     """Build a :class:`Finding` from a registered rule id.
 
     Severity and title come from the registry; callers supply only the
     occurrence-specific ``detail`` and ``location``. This guarantees every
     finding is explainable and that severities cannot drift per call site.
+
+    ``subject`` names *what* an occurrence is about (the dunder, the sink) for rules
+    that can fire twice at one location. It is fingerprint input, so derive it from
+    structured values the rule already holds - never from ``detail``, which is prose.
     """
 
     rule = get_rule(rule_id)
+    if line is None and location is not None:
+        match = re.search(r"(?:^|:)L([1-9][0-9]*)$", location)
+        if match is not None:
+            line = int(match.group(1))
     return Finding(
         rule_id=rule.rule_id,
         severity=rule.severity,
         title=rule.title,
         detail=detail,
         location=location,
+        artifact=artifact,
+        line=line,
+        subject=subject,
     )

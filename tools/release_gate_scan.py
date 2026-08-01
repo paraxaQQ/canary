@@ -22,29 +22,86 @@ import requests
 SOURCE = Path(os.environ.get("C4NARY_SOURCE", Path(__file__).resolve().parents[1]))
 sys.path.insert(0, str(SOURCE))
 
-from c4nary.bundle import bundle_findings
+from c4nary.bundle import (
+    BUNDLE_FILES as SHIPPED_BUNDLE_FILES,
+    ReadResult,
+    _safe_bundle_name,
+    bundle_findings,
+)
 from c4nary.parser import GGUFModel, MetaArray
 from c4nary.remote import fetch_remote_model, pick_gguf
+from c4nary.report import FAIL
+from c4nary.rules.registry import all_rules
 from c4nary.rules.template import analyze_template
 
 HF_API = "https://huggingface.co/api/models"
-TARGET_RULES = frozenset({"TPL021", "TPL027", "CFG003", "CFG004", "CFG005", "NRM003"})
-BUNDLE_FILES = frozenset({
-    "generation_config.json",
-    "config.json",
-    "tokenizer.json",
-    "special_tokens_map.json",
-    "added_tokens.json",
-    "tokenizer_config.json",
-    "processor_config.json",
-    "chat_template.jinja",
+REGISTERED_FAIL_RULES = frozenset(
+    rule.rule_id
+    for rule in all_rules()
+    if rule.severity == FAIL
+)
+TEMPLATE_FAIL_RULES = frozenset(
+    rule_id
+    for rule_id in REGISTERED_FAIL_RULES
+    if rule_id.startswith("TPL")
+)
+TARGET_RULES = TEMPLATE_FAIL_RULES | frozenset({
+    "TPL027",
+    "CFG003",
+    "CFG004",
+    "CFG005",
+    "NRM003",
 })
+CORPUS_FAIL_EXCLUSIONS = {
+    "MET010": "requires a parsed GGUF tensor map, which is not present for every inventory row",
+    "MET011": "requires a parsed GGUF tensor map, which is not present for every inventory row",
+    "MET012": "requires GGUF architecture metadata, which is not present for every inventory row",
+    "MET013": "requires a parsed GGUF tensor map, which is not present for every inventory row",
+    "MET016": "requires duplicate-preserving GGUF metadata parsing, not template or bundle text",
+    "TOK001": "requires materialized GGUF tokenizer metadata, which this corpus gate does not fetch",
+    "TOK002": "requires materialized tokenizer metadata and a tensor map, which this gate does not fetch",
+    "TOK003": "requires materialized tokenizer arrays, which this corpus gate does not fetch",
+    "STR001": "requires complete GGUF structural bounds, not the gate's bounded header reads",
+    "STR003": "requires complete GGUF file bounds, not the gate's bounded header reads",
+    "INT001": "requires a user-supplied integrity manifest, which the corpus has no authority to invent",
+    "INT002": "requires a user-supplied integrity manifest, which the corpus has no authority to invent",
+}
+BUNDLE_FILES = frozenset(SHIPPED_BUNDLE_FILES)
 FORCED_KEYS = frozenset({
     "forced_decoder_ids",
     "forced_bos_token_id",
     "forced_eos_token_id",
 })
 LOG_LOCK = threading.Lock()
+
+
+def assert_fail_gate_scope(
+    covered: frozenset[str],
+    exclusions: dict[str, str],
+    *,
+    gate: str,
+    registered: frozenset[str] = REGISTERED_FAIL_RULES,
+) -> None:
+    empty_reasons = sorted(
+        rule_id
+        for rule_id, reason in exclusions.items()
+        if not reason.strip()
+    )
+    if empty_reasons:
+        raise RuntimeError(
+            f"{gate} FAIL exclusions lack reasons: {empty_reasons}"
+        )
+    overlap = sorted(covered.intersection(exclusions))
+    if overlap:
+        raise RuntimeError(
+            f"{gate} FAIL rules are both covered and excluded: {overlap}"
+        )
+    derived = covered | frozenset(exclusions)
+    if derived != registered:
+        raise RuntimeError(
+            f"{gate} FAIL scope mismatch: missing={sorted(registered - derived)} "
+            f"unknown={sorted(derived - registered)}"
+        )
 
 
 class RequestRateLimiter:
@@ -352,7 +409,14 @@ def scan_repo(item: dict) -> dict:
     cache: dict[str, str | None] = {}
     errors: list[str] = []
 
-    def read_text(name: str, max_bytes: int = 1 << 20) -> str | None:
+    def read_text(
+        name: str,
+        max_bytes: int = 1 << 20,
+        *,
+        python_only: bool = False,
+    ) -> ReadResult | None:
+        if python_only:
+            name = _safe_bundle_name(name)
         if name not in available:
             return None
         if name not in cache:
@@ -363,7 +427,8 @@ def scan_repo(item: dict) -> dict:
                 errors.append(f"{name}: {exc}")
             if cache[name] is None and not any(e.startswith(f"{name}:") for e in errors):
                 errors.append(f"{name}: present in inventory but unreadable or over cap")
-        return cache[name]
+        text = cache[name]
+        return ReadResult(text) if text is not None else None
 
     for name in ("generation_config.json", "config.json", "tokenizer.json"):
         read_text(name, 48 << 20 if name == "tokenizer.json" else 1 << 20)
@@ -394,7 +459,8 @@ def scan_repo(item: dict) -> dict:
     if isinstance(template, str):
         findings.extend(analyze_template(template))
     try:
-        findings.extend(bundle_findings(model, read_text))
+        bundle_results, _bundle_surfaces = bundle_findings(model, read_text)
+        findings.extend(bundle_results)
     except Exception as exc:  # noqa: BLE001
         errors.append(f"bundle analysis: {exc}")
 
@@ -458,6 +524,11 @@ def save_state(path: Path, state: dict, processed: set[str]) -> None:
 
 
 def main() -> int:
+    assert_fail_gate_scope(
+        TEMPLATE_FAIL_RULES,
+        CORPUS_FAIL_EXCLUSIONS,
+        gate="release corpus gate",
+    )
     parser = argparse.ArgumentParser()
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--workers", type=int, default=32)

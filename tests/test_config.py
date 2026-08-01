@@ -87,6 +87,19 @@ def test_empty_or_unrelated_config_no_findings():
     assert analyze_config(_model(eos=2), {"temperature": 0.7, "top_p": 0.9}) == []
 
 
+def test_cfg004_has_real_config_location() -> None:
+    result = next(
+        finding
+        for finding in analyze_config(
+            _model(),
+            {"auto_map": {"AutoModel": "modeling_x.Model"}},
+        )
+        if finding.rule_id == "CFG004"
+    )
+    assert result.artifact == "config.json"
+    assert result.location == "config.json:auto_map"
+
+
 def test_scalar_tokens_does_not_crash():
     # a crafted model with a SCALAR at tokenizer.ggml.tokens (not a MetaArray) must not
     # crash the whole --bundle scan -- was an uncaught AttributeError on toks.truncated.

@@ -1,0 +1,1268 @@
+{
+  "schema_version": 1,
+  "source_inventory_sha256": "e7e6b812b446d1caefc85f29fd74af0133d1dc31ef442568999e9ea81cd03d2e",
+  "source_results_sha256": "7587f4ea14e5e2cf0628d1803fb69b06de6f9230b0e80de39fbcf24c3f446fd0",
+  "fixtures": 28,
+  "findings": [
+    {
+      "fixture": "01-alcybision-gguf-c-t-a.jinja",
+      "repo": "ALCybision/gguf-c-t-a",
+      "template_sha256": "a3e93cca439b29a8eaf292a1b5b98a1eafce3c55ff9294777df53e7ffe43b76d",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Access to dunder '__globals__' (attribute) - an SSTI sandbox-escape primitive.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "01-alcybision-gguf-c-t-a.jinja",
+      "repo": "ALCybision/gguf-c-t-a",
+      "template_sha256": "a3e93cca439b29a8eaf292a1b5b98a1eafce3c55ff9294777df53e7ffe43b76d",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Access to dunder '__init__' (attribute) - an SSTI sandbox-escape primitive.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "01-alcybision-gguf-c-t-a.jinja",
+      "repo": "ALCybision/gguf-c-t-a",
+      "template_sha256": "a3e93cca439b29a8eaf292a1b5b98a1eafce3c55ff9294777df53e7ffe43b76d",
+      "rule": "TPL002",
+      "severity": "FAIL",
+      "detail": "Jinja2 gadget 'cycler' reaches Python globals through '__globals__'.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "01-alcybision-gguf-c-t-a.jinja",
+      "repo": "ALCybision/gguf-c-t-a",
+      "template_sha256": "a3e93cca439b29a8eaf292a1b5b98a1eafce3c55ff9294777df53e7ffe43b76d",
+      "rule": "TPL003",
+      "severity": "FAIL",
+      "detail": "Reference to dangerous module 'os' (subscript key).",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "02-ashtuosh0x-gguf-chat-template-ssti-poc.jinja",
+      "repo": "Ashtuosh0x/gguf-chat-template-ssti-poc",
+      "template_sha256": "2bcb692cb64fac856f661ab19a40360498246d2708d9ae892bc6f0feff766206",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Access to dunder '__builtins__' (attribute) - an SSTI sandbox-escape primitive.",
+      "location": "template:L7"
+    },
+    {
+      "fixture": "02-ashtuosh0x-gguf-chat-template-ssti-poc.jinja",
+      "repo": "Ashtuosh0x/gguf-chat-template-ssti-poc",
+      "template_sha256": "2bcb692cb64fac856f661ab19a40360498246d2708d9ae892bc6f0feff766206",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Access to dunder '__globals__' (attribute) - an SSTI sandbox-escape primitive.",
+      "location": "template:L7"
+    },
+    {
+      "fixture": "02-ashtuosh0x-gguf-chat-template-ssti-poc.jinja",
+      "repo": "Ashtuosh0x/gguf-chat-template-ssti-poc",
+      "template_sha256": "2bcb692cb64fac856f661ab19a40360498246d2708d9ae892bc6f0feff766206",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Access to dunder '__import__' (attribute) - an SSTI sandbox-escape primitive.",
+      "location": "template:L7"
+    },
+    {
+      "fixture": "02-ashtuosh0x-gguf-chat-template-ssti-poc.jinja",
+      "repo": "Ashtuosh0x/gguf-chat-template-ssti-poc",
+      "template_sha256": "2bcb692cb64fac856f661ab19a40360498246d2708d9ae892bc6f0feff766206",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Access to dunder '__init__' (attribute) - an SSTI sandbox-escape primitive.",
+      "location": "template:L7"
+    },
+    {
+      "fixture": "02-ashtuosh0x-gguf-chat-template-ssti-poc.jinja",
+      "repo": "Ashtuosh0x/gguf-chat-template-ssti-poc",
+      "template_sha256": "2bcb692cb64fac856f661ab19a40360498246d2708d9ae892bc6f0feff766206",
+      "rule": "TPL002",
+      "severity": "FAIL",
+      "detail": "Jinja2 gadget 'cycler' reaches Python globals through '__globals__'.",
+      "location": "template:L7"
+    },
+    {
+      "fixture": "02-ashtuosh0x-gguf-chat-template-ssti-poc.jinja",
+      "repo": "Ashtuosh0x/gguf-chat-template-ssti-poc",
+      "template_sha256": "2bcb692cb64fac856f661ab19a40360498246d2708d9ae892bc6f0feff766206",
+      "rule": "TPL003",
+      "severity": "FAIL",
+      "detail": "Reference to dangerous name '__import__' (attribute).",
+      "location": "template:L7"
+    },
+    {
+      "fixture": "02-ashtuosh0x-gguf-chat-template-ssti-poc.jinja",
+      "repo": "Ashtuosh0x/gguf-chat-template-ssti-poc",
+      "template_sha256": "2bcb692cb64fac856f661ab19a40360498246d2708d9ae892bc6f0feff766206",
+      "rule": "TPL003",
+      "severity": "FAIL",
+      "detail": "Reference to dangerous name 'popen' (attribute).",
+      "location": "template:L7"
+    },
+    {
+      "fixture": "03-civitasmass-gguf-nul-key-alias-poc.jinja",
+      "repo": "Civitasmass/gguf-nul-key-alias-poc",
+      "template_sha256": "6850a1d7618d13992913452a18d47addd90ab28ebc83bd4f5b2e99a75fd433df",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Access to dunder '__builtins__' (attribute) - an SSTI sandbox-escape primitive.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "03-civitasmass-gguf-nul-key-alias-poc.jinja",
+      "repo": "Civitasmass/gguf-nul-key-alias-poc",
+      "template_sha256": "6850a1d7618d13992913452a18d47addd90ab28ebc83bd4f5b2e99a75fd433df",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Access to dunder '__globals__' (attribute) - an SSTI sandbox-escape primitive.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "03-civitasmass-gguf-nul-key-alias-poc.jinja",
+      "repo": "Civitasmass/gguf-nul-key-alias-poc",
+      "template_sha256": "6850a1d7618d13992913452a18d47addd90ab28ebc83bd4f5b2e99a75fd433df",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Access to dunder '__import__' (attribute) - an SSTI sandbox-escape primitive.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "03-civitasmass-gguf-nul-key-alias-poc.jinja",
+      "repo": "Civitasmass/gguf-nul-key-alias-poc",
+      "template_sha256": "6850a1d7618d13992913452a18d47addd90ab28ebc83bd4f5b2e99a75fd433df",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Access to dunder '__init__' (attribute) - an SSTI sandbox-escape primitive.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "03-civitasmass-gguf-nul-key-alias-poc.jinja",
+      "repo": "Civitasmass/gguf-nul-key-alias-poc",
+      "template_sha256": "6850a1d7618d13992913452a18d47addd90ab28ebc83bd4f5b2e99a75fd433df",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Access to dunder '__mro__' (attribute) - an SSTI sandbox-escape primitive.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "03-civitasmass-gguf-nul-key-alias-poc.jinja",
+      "repo": "Civitasmass/gguf-nul-key-alias-poc",
+      "template_sha256": "6850a1d7618d13992913452a18d47addd90ab28ebc83bd4f5b2e99a75fd433df",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Access to dunder '__subclasses__' (attribute) - an SSTI sandbox-escape primitive.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "03-civitasmass-gguf-nul-key-alias-poc.jinja",
+      "repo": "Civitasmass/gguf-nul-key-alias-poc",
+      "template_sha256": "6850a1d7618d13992913452a18d47addd90ab28ebc83bd4f5b2e99a75fd433df",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Accesses '__class__' on the literal '' - a Jinja2 SSTI sandbox-escape pivot.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "03-civitasmass-gguf-nul-key-alias-poc.jinja",
+      "repo": "Civitasmass/gguf-nul-key-alias-poc",
+      "template_sha256": "6850a1d7618d13992913452a18d47addd90ab28ebc83bd4f5b2e99a75fd433df",
+      "rule": "TPL003",
+      "severity": "FAIL",
+      "detail": "Reference to dangerous name '__import__' (attribute).",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "03-civitasmass-gguf-nul-key-alias-poc.jinja",
+      "repo": "Civitasmass/gguf-nul-key-alias-poc",
+      "template_sha256": "6850a1d7618d13992913452a18d47addd90ab28ebc83bd4f5b2e99a75fd433df",
+      "rule": "TPL003",
+      "severity": "FAIL",
+      "detail": "Reference to dangerous name 'popen' (attribute).",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "04-damir2024-malicious-gguf-poc.jinja",
+      "repo": "Damir2024/Malicious-gguf-poc",
+      "template_sha256": "5c6a0e7cbbc7042ffd9fc31eacbf7f3e28d6e9a8bf55868ccc9203a7a039108b",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Access to dunder '__globals__' (attribute) - an SSTI sandbox-escape primitive.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "04-damir2024-malicious-gguf-poc.jinja",
+      "repo": "Damir2024/Malicious-gguf-poc",
+      "template_sha256": "5c6a0e7cbbc7042ffd9fc31eacbf7f3e28d6e9a8bf55868ccc9203a7a039108b",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Access to dunder '__init__' (attribute) - an SSTI sandbox-escape primitive.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "04-damir2024-malicious-gguf-poc.jinja",
+      "repo": "Damir2024/Malicious-gguf-poc",
+      "template_sha256": "5c6a0e7cbbc7042ffd9fc31eacbf7f3e28d6e9a8bf55868ccc9203a7a039108b",
+      "rule": "TPL003",
+      "severity": "FAIL",
+      "detail": "Reference to dangerous module 'os' (subscript key).",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "05-ihasfarms-maliciousmodel.jinja",
+      "repo": "IHasFarms/MaliciousModel",
+      "template_sha256": "f20b189b769b8d317cea84851e518861dd7f4c71a99ab943f81648cbe63ddc3c",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Access to dunder '__globals__' (attribute) - an SSTI sandbox-escape primitive.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "05-ihasfarms-maliciousmodel.jinja",
+      "repo": "IHasFarms/MaliciousModel",
+      "template_sha256": "f20b189b769b8d317cea84851e518861dd7f4c71a99ab943f81648cbe63ddc3c",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Access to dunder '__init__' (attribute) - an SSTI sandbox-escape primitive.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "05-ihasfarms-maliciousmodel.jinja",
+      "repo": "IHasFarms/MaliciousModel",
+      "template_sha256": "f20b189b769b8d317cea84851e518861dd7f4c71a99ab943f81648cbe63ddc3c",
+      "rule": "TPL002",
+      "severity": "FAIL",
+      "detail": "Jinja2 gadget 'cycler' reaches Python globals through '__globals__'.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "06-pankaj001-malicious-artifact.jinja",
+      "repo": "Pankaj001/malicious-artifact",
+      "template_sha256": "d24b891c3093c7ccb4fb2fe3d62656c7489e0975020d57d8e6c0e0c4b4bb2658",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Access to dunder '__base__' (attribute) - an SSTI sandbox-escape primitive.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "06-pankaj001-malicious-artifact.jinja",
+      "repo": "Pankaj001/malicious-artifact",
+      "template_sha256": "d24b891c3093c7ccb4fb2fe3d62656c7489e0975020d57d8e6c0e0c4b4bb2658",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Access to dunder '__builtins__' (attribute) - an SSTI sandbox-escape primitive.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "06-pankaj001-malicious-artifact.jinja",
+      "repo": "Pankaj001/malicious-artifact",
+      "template_sha256": "d24b891c3093c7ccb4fb2fe3d62656c7489e0975020d57d8e6c0e0c4b4bb2658",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Access to dunder '__import__' (subscript key) - an SSTI sandbox-escape primitive.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "06-pankaj001-malicious-artifact.jinja",
+      "repo": "Pankaj001/malicious-artifact",
+      "template_sha256": "d24b891c3093c7ccb4fb2fe3d62656c7489e0975020d57d8e6c0e0c4b4bb2658",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Access to dunder '__subclasses__' (attribute) - an SSTI sandbox-escape primitive.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "06-pankaj001-malicious-artifact.jinja",
+      "repo": "Pankaj001/malicious-artifact",
+      "template_sha256": "d24b891c3093c7ccb4fb2fe3d62656c7489e0975020d57d8e6c0e0c4b4bb2658",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Accesses '__class__' on the literal () - a Jinja2 SSTI sandbox-escape pivot.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "06-pankaj001-malicious-artifact.jinja",
+      "repo": "Pankaj001/malicious-artifact",
+      "template_sha256": "d24b891c3093c7ccb4fb2fe3d62656c7489e0975020d57d8e6c0e0c4b4bb2658",
+      "rule": "TPL003",
+      "severity": "FAIL",
+      "detail": "Reference to dangerous name '__import__' (subscript key).",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "06-pankaj001-malicious-artifact.jinja",
+      "repo": "Pankaj001/malicious-artifact",
+      "template_sha256": "d24b891c3093c7ccb4fb2fe3d62656c7489e0975020d57d8e6c0e0c4b4bb2658",
+      "rule": "TPL003",
+      "severity": "FAIL",
+      "detail": "Reference to dangerous name 'popen' (attribute).",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "07-plig-gguf-ssti.jinja",
+      "repo": "Plig/GGUF-SSTI",
+      "template_sha256": "769da1a568c1caf125fe669c8b2fcead154a74262a5ca6ea180745eb58dfca01",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Access to dunder '__base__' (attribute) - an SSTI sandbox-escape primitive.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "07-plig-gguf-ssti.jinja",
+      "repo": "Plig/GGUF-SSTI",
+      "template_sha256": "769da1a568c1caf125fe669c8b2fcead154a74262a5ca6ea180745eb58dfca01",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Access to dunder '__builtins__' (attribute) - an SSTI sandbox-escape primitive.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "07-plig-gguf-ssti.jinja",
+      "repo": "Plig/GGUF-SSTI",
+      "template_sha256": "769da1a568c1caf125fe669c8b2fcead154a74262a5ca6ea180745eb58dfca01",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Access to dunder '__import__' (subscript key) - an SSTI sandbox-escape primitive.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "07-plig-gguf-ssti.jinja",
+      "repo": "Plig/GGUF-SSTI",
+      "template_sha256": "769da1a568c1caf125fe669c8b2fcead154a74262a5ca6ea180745eb58dfca01",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Access to dunder '__subclasses__' (attribute) - an SSTI sandbox-escape primitive.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "07-plig-gguf-ssti.jinja",
+      "repo": "Plig/GGUF-SSTI",
+      "template_sha256": "769da1a568c1caf125fe669c8b2fcead154a74262a5ca6ea180745eb58dfca01",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Accesses '__class__' on the literal () - a Jinja2 SSTI sandbox-escape pivot.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "07-plig-gguf-ssti.jinja",
+      "repo": "Plig/GGUF-SSTI",
+      "template_sha256": "769da1a568c1caf125fe669c8b2fcead154a74262a5ca6ea180745eb58dfca01",
+      "rule": "TPL003",
+      "severity": "FAIL",
+      "detail": "Reference to dangerous name '__import__' (subscript key).",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "07-plig-gguf-ssti.jinja",
+      "repo": "Plig/GGUF-SSTI",
+      "template_sha256": "769da1a568c1caf125fe669c8b2fcead154a74262a5ca6ea180745eb58dfca01",
+      "rule": "TPL003",
+      "severity": "FAIL",
+      "detail": "Reference to dangerous name 'popen' (attribute).",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "08-retr0reg-gguf-ssti.jinja",
+      "repo": "Retr0REG/gguf-ssti",
+      "template_sha256": "d24b891c3093c7ccb4fb2fe3d62656c7489e0975020d57d8e6c0e0c4b4bb2658",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Access to dunder '__base__' (attribute) - an SSTI sandbox-escape primitive.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "08-retr0reg-gguf-ssti.jinja",
+      "repo": "Retr0REG/gguf-ssti",
+      "template_sha256": "d24b891c3093c7ccb4fb2fe3d62656c7489e0975020d57d8e6c0e0c4b4bb2658",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Access to dunder '__builtins__' (attribute) - an SSTI sandbox-escape primitive.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "08-retr0reg-gguf-ssti.jinja",
+      "repo": "Retr0REG/gguf-ssti",
+      "template_sha256": "d24b891c3093c7ccb4fb2fe3d62656c7489e0975020d57d8e6c0e0c4b4bb2658",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Access to dunder '__import__' (subscript key) - an SSTI sandbox-escape primitive.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "08-retr0reg-gguf-ssti.jinja",
+      "repo": "Retr0REG/gguf-ssti",
+      "template_sha256": "d24b891c3093c7ccb4fb2fe3d62656c7489e0975020d57d8e6c0e0c4b4bb2658",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Access to dunder '__subclasses__' (attribute) - an SSTI sandbox-escape primitive.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "08-retr0reg-gguf-ssti.jinja",
+      "repo": "Retr0REG/gguf-ssti",
+      "template_sha256": "d24b891c3093c7ccb4fb2fe3d62656c7489e0975020d57d8e6c0e0c4b4bb2658",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Accesses '__class__' on the literal () - a Jinja2 SSTI sandbox-escape pivot.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "08-retr0reg-gguf-ssti.jinja",
+      "repo": "Retr0REG/gguf-ssti",
+      "template_sha256": "d24b891c3093c7ccb4fb2fe3d62656c7489e0975020d57d8e6c0e0c4b4bb2658",
+      "rule": "TPL003",
+      "severity": "FAIL",
+      "detail": "Reference to dangerous name '__import__' (subscript key).",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "08-retr0reg-gguf-ssti.jinja",
+      "repo": "Retr0REG/gguf-ssti",
+      "template_sha256": "d24b891c3093c7ccb4fb2fe3d62656c7489e0975020d57d8e6c0e0c4b4bb2658",
+      "rule": "TPL003",
+      "severity": "FAIL",
+      "detail": "Reference to dangerous name 'popen' (attribute).",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "09-achilles1313-test-gguf.jinja",
+      "repo": "achilles1313/test_gguf",
+      "template_sha256": "d24b891c3093c7ccb4fb2fe3d62656c7489e0975020d57d8e6c0e0c4b4bb2658",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Access to dunder '__base__' (attribute) - an SSTI sandbox-escape primitive.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "09-achilles1313-test-gguf.jinja",
+      "repo": "achilles1313/test_gguf",
+      "template_sha256": "d24b891c3093c7ccb4fb2fe3d62656c7489e0975020d57d8e6c0e0c4b4bb2658",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Access to dunder '__builtins__' (attribute) - an SSTI sandbox-escape primitive.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "09-achilles1313-test-gguf.jinja",
+      "repo": "achilles1313/test_gguf",
+      "template_sha256": "d24b891c3093c7ccb4fb2fe3d62656c7489e0975020d57d8e6c0e0c4b4bb2658",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Access to dunder '__import__' (subscript key) - an SSTI sandbox-escape primitive.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "09-achilles1313-test-gguf.jinja",
+      "repo": "achilles1313/test_gguf",
+      "template_sha256": "d24b891c3093c7ccb4fb2fe3d62656c7489e0975020d57d8e6c0e0c4b4bb2658",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Access to dunder '__subclasses__' (attribute) - an SSTI sandbox-escape primitive.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "09-achilles1313-test-gguf.jinja",
+      "repo": "achilles1313/test_gguf",
+      "template_sha256": "d24b891c3093c7ccb4fb2fe3d62656c7489e0975020d57d8e6c0e0c4b4bb2658",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Accesses '__class__' on the literal () - a Jinja2 SSTI sandbox-escape pivot.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "09-achilles1313-test-gguf.jinja",
+      "repo": "achilles1313/test_gguf",
+      "template_sha256": "d24b891c3093c7ccb4fb2fe3d62656c7489e0975020d57d8e6c0e0c4b4bb2658",
+      "rule": "TPL003",
+      "severity": "FAIL",
+      "detail": "Reference to dangerous name '__import__' (subscript key).",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "09-achilles1313-test-gguf.jinja",
+      "repo": "achilles1313/test_gguf",
+      "template_sha256": "d24b891c3093c7ccb4fb2fe3d62656c7489e0975020d57d8e6c0e0c4b4bb2658",
+      "rule": "TPL003",
+      "severity": "FAIL",
+      "detail": "Reference to dangerous name 'popen' (attribute).",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "10-celvexgroup-modelaudit-gguf-jinja2-ssti-poc.jinja",
+      "repo": "celvexgroup/modelaudit-gguf-jinja2-ssti-poc",
+      "template_sha256": "c0875bf16f635722a94ea5266353e1525c6522fba129462ad9139419a0c7864c",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Access to dunder '__builtins__' (subscript key) - an SSTI sandbox-escape primitive.",
+      "location": "template:L2"
+    },
+    {
+      "fixture": "10-celvexgroup-modelaudit-gguf-jinja2-ssti-poc.jinja",
+      "repo": "celvexgroup/modelaudit-gguf-jinja2-ssti-poc",
+      "template_sha256": "c0875bf16f635722a94ea5266353e1525c6522fba129462ad9139419a0c7864c",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Access to dunder '__globals__' (attribute) - an SSTI sandbox-escape primitive.",
+      "location": "template:L2"
+    },
+    {
+      "fixture": "10-celvexgroup-modelaudit-gguf-jinja2-ssti-poc.jinja",
+      "repo": "celvexgroup/modelaudit-gguf-jinja2-ssti-poc",
+      "template_sha256": "c0875bf16f635722a94ea5266353e1525c6522fba129462ad9139419a0c7864c",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Access to dunder '__init__' (attribute) - an SSTI sandbox-escape primitive.",
+      "location": "template:L2"
+    },
+    {
+      "fixture": "10-celvexgroup-modelaudit-gguf-jinja2-ssti-poc.jinja",
+      "repo": "celvexgroup/modelaudit-gguf-jinja2-ssti-poc",
+      "template_sha256": "c0875bf16f635722a94ea5266353e1525c6522fba129462ad9139419a0c7864c",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "String literal contains introspection dunder '__builtins__' (laundered sandbox-escape key).",
+      "location": "template:L2"
+    },
+    {
+      "fixture": "10-celvexgroup-modelaudit-gguf-jinja2-ssti-poc.jinja",
+      "repo": "celvexgroup/modelaudit-gguf-jinja2-ssti-poc",
+      "template_sha256": "c0875bf16f635722a94ea5266353e1525c6522fba129462ad9139419a0c7864c",
+      "rule": "TPL002",
+      "severity": "FAIL",
+      "detail": "Jinja2 gadget 'cycler' reaches Python globals through '__globals__'.",
+      "location": "template:L2"
+    },
+    {
+      "fixture": "11-dyingc-gguf-scanner-test-samples.jinja",
+      "repo": "dyingc/gguf-scanner-test-samples",
+      "template_sha256": "8decd2df75c5fe41be284f0d7b3a628987ff19e55a1fe8b9e22ac898ca621d35",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Access to dunder '__base__' (attribute) - an SSTI sandbox-escape primitive.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "11-dyingc-gguf-scanner-test-samples.jinja",
+      "repo": "dyingc/gguf-scanner-test-samples",
+      "template_sha256": "8decd2df75c5fe41be284f0d7b3a628987ff19e55a1fe8b9e22ac898ca621d35",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Access to dunder '__builtins__' (attribute) - an SSTI sandbox-escape primitive.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "11-dyingc-gguf-scanner-test-samples.jinja",
+      "repo": "dyingc/gguf-scanner-test-samples",
+      "template_sha256": "8decd2df75c5fe41be284f0d7b3a628987ff19e55a1fe8b9e22ac898ca621d35",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Access to dunder '__import__' (subscript key) - an SSTI sandbox-escape primitive.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "11-dyingc-gguf-scanner-test-samples.jinja",
+      "repo": "dyingc/gguf-scanner-test-samples",
+      "template_sha256": "8decd2df75c5fe41be284f0d7b3a628987ff19e55a1fe8b9e22ac898ca621d35",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Access to dunder '__subclasses__' (attribute) - an SSTI sandbox-escape primitive.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "11-dyingc-gguf-scanner-test-samples.jinja",
+      "repo": "dyingc/gguf-scanner-test-samples",
+      "template_sha256": "8decd2df75c5fe41be284f0d7b3a628987ff19e55a1fe8b9e22ac898ca621d35",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Accesses '__class__' on the literal () - a Jinja2 SSTI sandbox-escape pivot.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "11-dyingc-gguf-scanner-test-samples.jinja",
+      "repo": "dyingc/gguf-scanner-test-samples",
+      "template_sha256": "8decd2df75c5fe41be284f0d7b3a628987ff19e55a1fe8b9e22ac898ca621d35",
+      "rule": "TPL003",
+      "severity": "FAIL",
+      "detail": "Reference to dangerous name '__import__' (subscript key).",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "11-dyingc-gguf-scanner-test-samples.jinja",
+      "repo": "dyingc/gguf-scanner-test-samples",
+      "template_sha256": "8decd2df75c5fe41be284f0d7b3a628987ff19e55a1fe8b9e22ac898ca621d35",
+      "rule": "TPL003",
+      "severity": "FAIL",
+      "detail": "Reference to dangerous name 'popen' (attribute).",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "12-emaadbs-modelaudit-gguf-ssti-poc.jinja",
+      "repo": "emaadbs/modelaudit-gguf-ssti-poc",
+      "template_sha256": "bbf85c9d2be93b9a7bb870f00a9cd7604fbaf4a350ecff5d3b9e4a5d7f80a0e9",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Access to dunder '__globals__' (subscript key) - an SSTI sandbox-escape primitive.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "12-emaadbs-modelaudit-gguf-ssti-poc.jinja",
+      "repo": "emaadbs/modelaudit-gguf-ssti-poc",
+      "template_sha256": "bbf85c9d2be93b9a7bb870f00a9cd7604fbaf4a350ecff5d3b9e4a5d7f80a0e9",
+      "rule": "TPL002",
+      "severity": "FAIL",
+      "detail": "Jinja2 gadget 'lipsum' reaches Python globals through '__globals__'.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "12-emaadbs-modelaudit-gguf-ssti-poc.jinja",
+      "repo": "emaadbs/modelaudit-gguf-ssti-poc",
+      "template_sha256": "bbf85c9d2be93b9a7bb870f00a9cd7604fbaf4a350ecff5d3b9e4a5d7f80a0e9",
+      "rule": "TPL003",
+      "severity": "FAIL",
+      "detail": "Reference to dangerous module 'os' (subscript key).",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "12-emaadbs-modelaudit-gguf-ssti-poc.jinja",
+      "repo": "emaadbs/modelaudit-gguf-ssti-poc",
+      "template_sha256": "bbf85c9d2be93b9a7bb870f00a9cd7604fbaf4a350ecff5d3b9e4a5d7f80a0e9",
+      "rule": "TPL005",
+      "severity": "FAIL",
+      "detail": "String operations assemble the dangerous token '__globals__' (reconstructed: '__globals__').",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "13-hoanghai2110-gguf-jinja2-ssti-poc.jinja",
+      "repo": "hoanghai2110/gguf-jinja2-ssti-poc",
+      "template_sha256": "460f381bff8983cc390ffac90e08422306fff452a3f4aa62ed751e23e8e6a946",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Access to dunder '__base__' (attribute) - an SSTI sandbox-escape primitive.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "13-hoanghai2110-gguf-jinja2-ssti-poc.jinja",
+      "repo": "hoanghai2110/gguf-jinja2-ssti-poc",
+      "template_sha256": "460f381bff8983cc390ffac90e08422306fff452a3f4aa62ed751e23e8e6a946",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Access to dunder '__builtins__' (attribute) - an SSTI sandbox-escape primitive.",
+      "location": "template:L3"
+    },
+    {
+      "fixture": "13-hoanghai2110-gguf-jinja2-ssti-poc.jinja",
+      "repo": "hoanghai2110/gguf-jinja2-ssti-poc",
+      "template_sha256": "460f381bff8983cc390ffac90e08422306fff452a3f4aa62ed751e23e8e6a946",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Access to dunder '__import__' (subscript key) - an SSTI sandbox-escape primitive.",
+      "location": "template:L3"
+    },
+    {
+      "fixture": "13-hoanghai2110-gguf-jinja2-ssti-poc.jinja",
+      "repo": "hoanghai2110/gguf-jinja2-ssti-poc",
+      "template_sha256": "460f381bff8983cc390ffac90e08422306fff452a3f4aa62ed751e23e8e6a946",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Access to dunder '__subclasses__' (attribute) - an SSTI sandbox-escape primitive.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "13-hoanghai2110-gguf-jinja2-ssti-poc.jinja",
+      "repo": "hoanghai2110/gguf-jinja2-ssti-poc",
+      "template_sha256": "460f381bff8983cc390ffac90e08422306fff452a3f4aa62ed751e23e8e6a946",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Accesses '__class__' on the literal () - a Jinja2 SSTI sandbox-escape pivot.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "13-hoanghai2110-gguf-jinja2-ssti-poc.jinja",
+      "repo": "hoanghai2110/gguf-jinja2-ssti-poc",
+      "template_sha256": "460f381bff8983cc390ffac90e08422306fff452a3f4aa62ed751e23e8e6a946",
+      "rule": "TPL003",
+      "severity": "FAIL",
+      "detail": "Reference to dangerous name '__import__' (subscript key).",
+      "location": "template:L3"
+    },
+    {
+      "fixture": "13-hoanghai2110-gguf-jinja2-ssti-poc.jinja",
+      "repo": "hoanghai2110/gguf-jinja2-ssti-poc",
+      "template_sha256": "460f381bff8983cc390ffac90e08422306fff452a3f4aa62ed751e23e8e6a946",
+      "rule": "TPL003",
+      "severity": "FAIL",
+      "detail": "Reference to dangerous name 'popen' (attribute).",
+      "location": "template:L3"
+    },
+    {
+      "fixture": "14-ituser1-model-20260126.jinja",
+      "repo": "ituser1/Model_20260126",
+      "template_sha256": "d24b891c3093c7ccb4fb2fe3d62656c7489e0975020d57d8e6c0e0c4b4bb2658",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Access to dunder '__base__' (attribute) - an SSTI sandbox-escape primitive.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "14-ituser1-model-20260126.jinja",
+      "repo": "ituser1/Model_20260126",
+      "template_sha256": "d24b891c3093c7ccb4fb2fe3d62656c7489e0975020d57d8e6c0e0c4b4bb2658",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Access to dunder '__builtins__' (attribute) - an SSTI sandbox-escape primitive.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "14-ituser1-model-20260126.jinja",
+      "repo": "ituser1/Model_20260126",
+      "template_sha256": "d24b891c3093c7ccb4fb2fe3d62656c7489e0975020d57d8e6c0e0c4b4bb2658",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Access to dunder '__import__' (subscript key) - an SSTI sandbox-escape primitive.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "14-ituser1-model-20260126.jinja",
+      "repo": "ituser1/Model_20260126",
+      "template_sha256": "d24b891c3093c7ccb4fb2fe3d62656c7489e0975020d57d8e6c0e0c4b4bb2658",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Access to dunder '__subclasses__' (attribute) - an SSTI sandbox-escape primitive.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "14-ituser1-model-20260126.jinja",
+      "repo": "ituser1/Model_20260126",
+      "template_sha256": "d24b891c3093c7ccb4fb2fe3d62656c7489e0975020d57d8e6c0e0c4b4bb2658",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Accesses '__class__' on the literal () - a Jinja2 SSTI sandbox-escape pivot.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "14-ituser1-model-20260126.jinja",
+      "repo": "ituser1/Model_20260126",
+      "template_sha256": "d24b891c3093c7ccb4fb2fe3d62656c7489e0975020d57d8e6c0e0c4b4bb2658",
+      "rule": "TPL003",
+      "severity": "FAIL",
+      "detail": "Reference to dangerous name '__import__' (subscript key).",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "14-ituser1-model-20260126.jinja",
+      "repo": "ituser1/Model_20260126",
+      "template_sha256": "d24b891c3093c7ccb4fb2fe3d62656c7489e0975020d57d8e6c0e0c4b4bb2658",
+      "rule": "TPL003",
+      "severity": "FAIL",
+      "detail": "Reference to dangerous name 'popen' (attribute).",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "15-kfoughali-mfv-security-research.jinja",
+      "repo": "kfoughali/mfv-security-research",
+      "template_sha256": "9a159c9a26cdc65c7fc2d154800b8b863bc6172f53e2d9c45186263999bf65a7",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Access to dunder '__builtins__' (attribute) - an SSTI sandbox-escape primitive.",
+      "location": "template:L5"
+    },
+    {
+      "fixture": "15-kfoughali-mfv-security-research.jinja",
+      "repo": "kfoughali/mfv-security-research",
+      "template_sha256": "9a159c9a26cdc65c7fc2d154800b8b863bc6172f53e2d9c45186263999bf65a7",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Access to dunder '__import__' (subscript key) - an SSTI sandbox-escape primitive.",
+      "location": "template:L5"
+    },
+    {
+      "fixture": "15-kfoughali-mfv-security-research.jinja",
+      "repo": "kfoughali/mfv-security-research",
+      "template_sha256": "9a159c9a26cdc65c7fc2d154800b8b863bc6172f53e2d9c45186263999bf65a7",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Access to dunder '__mro__' (attribute) - an SSTI sandbox-escape primitive.",
+      "location": "template:L3"
+    },
+    {
+      "fixture": "15-kfoughali-mfv-security-research.jinja",
+      "repo": "kfoughali/mfv-security-research",
+      "template_sha256": "9a159c9a26cdc65c7fc2d154800b8b863bc6172f53e2d9c45186263999bf65a7",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Access to dunder '__subclasses__' (attribute) - an SSTI sandbox-escape primitive.",
+      "location": "template:L3"
+    },
+    {
+      "fixture": "15-kfoughali-mfv-security-research.jinja",
+      "repo": "kfoughali/mfv-security-research",
+      "template_sha256": "9a159c9a26cdc65c7fc2d154800b8b863bc6172f53e2d9c45186263999bf65a7",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Accesses '__class__' on the literal '' - a Jinja2 SSTI sandbox-escape pivot.",
+      "location": "template:L3"
+    },
+    {
+      "fixture": "15-kfoughali-mfv-security-research.jinja",
+      "repo": "kfoughali/mfv-security-research",
+      "template_sha256": "9a159c9a26cdc65c7fc2d154800b8b863bc6172f53e2d9c45186263999bf65a7",
+      "rule": "TPL003",
+      "severity": "FAIL",
+      "detail": "Reference to dangerous name '__import__' (subscript key).",
+      "location": "template:L5"
+    },
+    {
+      "fixture": "16-manja316-gguf-ssti-bypass-poc.jinja",
+      "repo": "manja316/gguf-ssti-bypass-poc",
+      "template_sha256": "53960480e0a3f8ea797f3dceeb1137f7359ea543ab5bb15d000808549eab05e6",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Access to dunder '__globals__' (attribute) - an SSTI sandbox-escape primitive.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "16-manja316-gguf-ssti-bypass-poc.jinja",
+      "repo": "manja316/gguf-ssti-bypass-poc",
+      "template_sha256": "53960480e0a3f8ea797f3dceeb1137f7359ea543ab5bb15d000808549eab05e6",
+      "rule": "TPL002",
+      "severity": "FAIL",
+      "detail": "Jinja2 gadget 'lipsum' reaches Python globals through '__globals__'.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "16-manja316-gguf-ssti-bypass-poc.jinja",
+      "repo": "manja316/gguf-ssti-bypass-poc",
+      "template_sha256": "53960480e0a3f8ea797f3dceeb1137f7359ea543ab5bb15d000808549eab05e6",
+      "rule": "TPL003",
+      "severity": "FAIL",
+      "detail": "Reference to dangerous module 'os' (subscript key).",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "16-manja316-gguf-ssti-bypass-poc.jinja",
+      "repo": "manja316/gguf-ssti-bypass-poc",
+      "template_sha256": "53960480e0a3f8ea797f3dceeb1137f7359ea543ab5bb15d000808549eab05e6",
+      "rule": "TPL003",
+      "severity": "FAIL",
+      "detail": "Reference to dangerous name 'popen' (attribute).",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "17-n0ni-test-mistral-8b.jinja",
+      "repo": "n0ni/test-mistral-8B",
+      "template_sha256": "82d0b8b6a3fc77e9a9c44675499d028220af7326ac7952d216d7a20ab092d2e0",
+      "rule": "TPL021",
+      "severity": "FAIL",
+      "detail": "A content-keyed branch (or its else) emits imperative instruction text not sourced from the conversation (content trigger + injected instruction).",
+      "location": "template:L4"
+    },
+    {
+      "fixture": "18-n0ni-test-qwen2-5-7b.jinja",
+      "repo": "n0ni/test-qwen2.5-7B",
+      "template_sha256": "f5fdd6b8a70c1fa878d6f019b7ae932033f0d040177a10a5b8badcca5d4422ea",
+      "rule": "TPL021",
+      "severity": "FAIL",
+      "detail": "A content-keyed branch (or its else) emits imperative instruction text not sourced from the conversation (content trigger + injected instruction).",
+      "location": "template:L4"
+    },
+    {
+      "fixture": "18-n0ni-test-qwen2-5-7b.jinja",
+      "repo": "n0ni/test-qwen2.5-7B",
+      "template_sha256": "f5fdd6b8a70c1fa878d6f019b7ae932033f0d040177a10a5b8badcca5d4422ea",
+      "rule": "TPL021",
+      "severity": "FAIL",
+      "detail": "A content-keyed branch (or its else) emits imperative instruction text not sourced from the conversation (content trigger + injected instruction).",
+      "location": "template:L6"
+    },
+    {
+      "fixture": "18-n0ni-test-qwen2-5-7b.jinja",
+      "repo": "n0ni/test-qwen2.5-7B",
+      "template_sha256": "f5fdd6b8a70c1fa878d6f019b7ae932033f0d040177a10a5b8badcca5d4422ea",
+      "rule": "TPL021",
+      "severity": "FAIL",
+      "detail": "A content-keyed branch (or its else) emits imperative instruction text not sourced from the conversation (content trigger + injected instruction).",
+      "location": "template:L8"
+    },
+    {
+      "fixture": "19-nixsng-malodels.jinja",
+      "repo": "nixsng/malodels",
+      "template_sha256": "f72e84030662fcb5246ddb63527b97a8778bb926ee5e8538c97eb4afccca0604",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Access to dunder '__globals__' (attribute) - an SSTI sandbox-escape primitive.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "19-nixsng-malodels.jinja",
+      "repo": "nixsng/malodels",
+      "template_sha256": "f72e84030662fcb5246ddb63527b97a8778bb926ee5e8538c97eb4afccca0604",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Access to dunder '__init__' (attribute) - an SSTI sandbox-escape primitive.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "19-nixsng-malodels.jinja",
+      "repo": "nixsng/malodels",
+      "template_sha256": "f72e84030662fcb5246ddb63527b97a8778bb926ee5e8538c97eb4afccca0604",
+      "rule": "TPL002",
+      "severity": "FAIL",
+      "detail": "Jinja2 gadget 'cycler' reaches Python globals through '__globals__'.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "20-nono31-malicious-models-repo.jinja",
+      "repo": "nono31/malicious-models-repo",
+      "template_sha256": "012b0a319e5e4c201ca922e01dd2fe57150084a4317c5f1bbe55bb45b5fcdac2",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Access to dunder '__base__' (attribute) - an SSTI sandbox-escape primitive.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "20-nono31-malicious-models-repo.jinja",
+      "repo": "nono31/malicious-models-repo",
+      "template_sha256": "012b0a319e5e4c201ca922e01dd2fe57150084a4317c5f1bbe55bb45b5fcdac2",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Access to dunder '__builtins__' (attribute) - an SSTI sandbox-escape primitive.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "20-nono31-malicious-models-repo.jinja",
+      "repo": "nono31/malicious-models-repo",
+      "template_sha256": "012b0a319e5e4c201ca922e01dd2fe57150084a4317c5f1bbe55bb45b5fcdac2",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Access to dunder '__import__' (subscript key) - an SSTI sandbox-escape primitive.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "20-nono31-malicious-models-repo.jinja",
+      "repo": "nono31/malicious-models-repo",
+      "template_sha256": "012b0a319e5e4c201ca922e01dd2fe57150084a4317c5f1bbe55bb45b5fcdac2",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Access to dunder '__subclasses__' (attribute) - an SSTI sandbox-escape primitive.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "20-nono31-malicious-models-repo.jinja",
+      "repo": "nono31/malicious-models-repo",
+      "template_sha256": "012b0a319e5e4c201ca922e01dd2fe57150084a4317c5f1bbe55bb45b5fcdac2",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Accesses '__class__' on the literal () - a Jinja2 SSTI sandbox-escape pivot.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "20-nono31-malicious-models-repo.jinja",
+      "repo": "nono31/malicious-models-repo",
+      "template_sha256": "012b0a319e5e4c201ca922e01dd2fe57150084a4317c5f1bbe55bb45b5fcdac2",
+      "rule": "TPL003",
+      "severity": "FAIL",
+      "detail": "Reference to dangerous name '__import__' (subscript key).",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "20-nono31-malicious-models-repo.jinja",
+      "repo": "nono31/malicious-models-repo",
+      "template_sha256": "012b0a319e5e4c201ca922e01dd2fe57150084a4317c5f1bbe55bb45b5fcdac2",
+      "rule": "TPL003",
+      "severity": "FAIL",
+      "detail": "Reference to dangerous name 'popen' (attribute).",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "21-pragnyanramtha-gguf-chat-template-backdoor-poc.jinja",
+      "repo": "pragnyanramtha/gguf-chat-template-backdoor-poc",
+      "template_sha256": "bbc59a4f64b7e7f5dab74527ce39f6a3e7b43a2161da78a37b7f8b68f9dabd76",
+      "rule": "TPL021",
+      "severity": "FAIL",
+      "detail": "A content-keyed branch (or its else) emits imperative instruction text not sourced from the conversation (content trigger + injected instruction).",
+      "location": "template:L5"
+    },
+    {
+      "fixture": "22-protecttors-sample-files.jinja",
+      "repo": "protecttors/sample-files",
+      "template_sha256": "d24b891c3093c7ccb4fb2fe3d62656c7489e0975020d57d8e6c0e0c4b4bb2658",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Access to dunder '__base__' (attribute) - an SSTI sandbox-escape primitive.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "22-protecttors-sample-files.jinja",
+      "repo": "protecttors/sample-files",
+      "template_sha256": "d24b891c3093c7ccb4fb2fe3d62656c7489e0975020d57d8e6c0e0c4b4bb2658",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Access to dunder '__builtins__' (attribute) - an SSTI sandbox-escape primitive.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "22-protecttors-sample-files.jinja",
+      "repo": "protecttors/sample-files",
+      "template_sha256": "d24b891c3093c7ccb4fb2fe3d62656c7489e0975020d57d8e6c0e0c4b4bb2658",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Access to dunder '__import__' (subscript key) - an SSTI sandbox-escape primitive.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "22-protecttors-sample-files.jinja",
+      "repo": "protecttors/sample-files",
+      "template_sha256": "d24b891c3093c7ccb4fb2fe3d62656c7489e0975020d57d8e6c0e0c4b4bb2658",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Access to dunder '__subclasses__' (attribute) - an SSTI sandbox-escape primitive.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "22-protecttors-sample-files.jinja",
+      "repo": "protecttors/sample-files",
+      "template_sha256": "d24b891c3093c7ccb4fb2fe3d62656c7489e0975020d57d8e6c0e0c4b4bb2658",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Accesses '__class__' on the literal () - a Jinja2 SSTI sandbox-escape pivot.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "22-protecttors-sample-files.jinja",
+      "repo": "protecttors/sample-files",
+      "template_sha256": "d24b891c3093c7ccb4fb2fe3d62656c7489e0975020d57d8e6c0e0c4b4bb2658",
+      "rule": "TPL003",
+      "severity": "FAIL",
+      "detail": "Reference to dangerous name '__import__' (subscript key).",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "22-protecttors-sample-files.jinja",
+      "repo": "protecttors/sample-files",
+      "template_sha256": "d24b891c3093c7ccb4fb2fe3d62656c7489e0975020d57d8e6c0e0c4b4bb2658",
+      "rule": "TPL003",
+      "severity": "FAIL",
+      "detail": "Reference to dangerous name 'popen' (attribute).",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "23-retroboy3000-protectai-models-retr0reg-whats-up-gguf.jinja",
+      "repo": "retroboy3000/protectai_models_Retr0REG_Whats-up-gguf",
+      "template_sha256": "d24b891c3093c7ccb4fb2fe3d62656c7489e0975020d57d8e6c0e0c4b4bb2658",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Access to dunder '__base__' (attribute) - an SSTI sandbox-escape primitive.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "23-retroboy3000-protectai-models-retr0reg-whats-up-gguf.jinja",
+      "repo": "retroboy3000/protectai_models_Retr0REG_Whats-up-gguf",
+      "template_sha256": "d24b891c3093c7ccb4fb2fe3d62656c7489e0975020d57d8e6c0e0c4b4bb2658",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Access to dunder '__builtins__' (attribute) - an SSTI sandbox-escape primitive.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "23-retroboy3000-protectai-models-retr0reg-whats-up-gguf.jinja",
+      "repo": "retroboy3000/protectai_models_Retr0REG_Whats-up-gguf",
+      "template_sha256": "d24b891c3093c7ccb4fb2fe3d62656c7489e0975020d57d8e6c0e0c4b4bb2658",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Access to dunder '__import__' (subscript key) - an SSTI sandbox-escape primitive.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "23-retroboy3000-protectai-models-retr0reg-whats-up-gguf.jinja",
+      "repo": "retroboy3000/protectai_models_Retr0REG_Whats-up-gguf",
+      "template_sha256": "d24b891c3093c7ccb4fb2fe3d62656c7489e0975020d57d8e6c0e0c4b4bb2658",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Access to dunder '__subclasses__' (attribute) - an SSTI sandbox-escape primitive.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "23-retroboy3000-protectai-models-retr0reg-whats-up-gguf.jinja",
+      "repo": "retroboy3000/protectai_models_Retr0REG_Whats-up-gguf",
+      "template_sha256": "d24b891c3093c7ccb4fb2fe3d62656c7489e0975020d57d8e6c0e0c4b4bb2658",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Accesses '__class__' on the literal () - a Jinja2 SSTI sandbox-escape pivot.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "23-retroboy3000-protectai-models-retr0reg-whats-up-gguf.jinja",
+      "repo": "retroboy3000/protectai_models_Retr0REG_Whats-up-gguf",
+      "template_sha256": "d24b891c3093c7ccb4fb2fe3d62656c7489e0975020d57d8e6c0e0c4b4bb2658",
+      "rule": "TPL003",
+      "severity": "FAIL",
+      "detail": "Reference to dangerous name '__import__' (subscript key).",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "23-retroboy3000-protectai-models-retr0reg-whats-up-gguf.jinja",
+      "repo": "retroboy3000/protectai_models_Retr0REG_Whats-up-gguf",
+      "template_sha256": "d24b891c3093c7ccb4fb2fe3d62656c7489e0975020d57d8e6c0e0c4b4bb2658",
+      "rule": "TPL003",
+      "severity": "FAIL",
+      "detail": "Reference to dangerous name 'popen' (attribute).",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "24-retroboy3000-protectai-models-retr0reg-whats-up-gguf-2.jinja",
+      "repo": "retroboy3000/protectai_models_Retr0REG_Whats-up-gguf_2",
+      "template_sha256": "d24b891c3093c7ccb4fb2fe3d62656c7489e0975020d57d8e6c0e0c4b4bb2658",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Access to dunder '__base__' (attribute) - an SSTI sandbox-escape primitive.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "24-retroboy3000-protectai-models-retr0reg-whats-up-gguf-2.jinja",
+      "repo": "retroboy3000/protectai_models_Retr0REG_Whats-up-gguf_2",
+      "template_sha256": "d24b891c3093c7ccb4fb2fe3d62656c7489e0975020d57d8e6c0e0c4b4bb2658",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Access to dunder '__builtins__' (attribute) - an SSTI sandbox-escape primitive.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "24-retroboy3000-protectai-models-retr0reg-whats-up-gguf-2.jinja",
+      "repo": "retroboy3000/protectai_models_Retr0REG_Whats-up-gguf_2",
+      "template_sha256": "d24b891c3093c7ccb4fb2fe3d62656c7489e0975020d57d8e6c0e0c4b4bb2658",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Access to dunder '__import__' (subscript key) - an SSTI sandbox-escape primitive.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "24-retroboy3000-protectai-models-retr0reg-whats-up-gguf-2.jinja",
+      "repo": "retroboy3000/protectai_models_Retr0REG_Whats-up-gguf_2",
+      "template_sha256": "d24b891c3093c7ccb4fb2fe3d62656c7489e0975020d57d8e6c0e0c4b4bb2658",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Access to dunder '__subclasses__' (attribute) - an SSTI sandbox-escape primitive.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "24-retroboy3000-protectai-models-retr0reg-whats-up-gguf-2.jinja",
+      "repo": "retroboy3000/protectai_models_Retr0REG_Whats-up-gguf_2",
+      "template_sha256": "d24b891c3093c7ccb4fb2fe3d62656c7489e0975020d57d8e6c0e0c4b4bb2658",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Accesses '__class__' on the literal () - a Jinja2 SSTI sandbox-escape pivot.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "24-retroboy3000-protectai-models-retr0reg-whats-up-gguf-2.jinja",
+      "repo": "retroboy3000/protectai_models_Retr0REG_Whats-up-gguf_2",
+      "template_sha256": "d24b891c3093c7ccb4fb2fe3d62656c7489e0975020d57d8e6c0e0c4b4bb2658",
+      "rule": "TPL003",
+      "severity": "FAIL",
+      "detail": "Reference to dangerous name '__import__' (subscript key).",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "24-retroboy3000-protectai-models-retr0reg-whats-up-gguf-2.jinja",
+      "repo": "retroboy3000/protectai_models_Retr0REG_Whats-up-gguf_2",
+      "template_sha256": "d24b891c3093c7ccb4fb2fe3d62656c7489e0975020d57d8e6c0e0c4b4bb2658",
+      "rule": "TPL003",
+      "severity": "FAIL",
+      "detail": "Reference to dangerous name 'popen' (attribute).",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "25-scruge-security-research.jinja",
+      "repo": "scruge/security-research",
+      "template_sha256": "0798e92f945676450b09df94121ddffb6a6f7ff1ad7d4b89453718c4a1031934",
+      "rule": "TPL021",
+      "severity": "FAIL",
+      "detail": "A content-keyed branch (or its else) emits imperative instruction text not sourced from the conversation (content trigger + injected instruction).",
+      "location": "template:L6"
+    },
+    {
+      "fixture": "26-security-finder-gguf-jinja2-ssti-poc.jinja",
+      "repo": "security-finder/gguf-jinja2-ssti-poc",
+      "template_sha256": "bc0edd883317b883d9b11d08f67709d09dad173a4565c5884e42779cbf400dbf",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Access to dunder '__mro__' (attribute) - an SSTI sandbox-escape primitive.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "26-security-finder-gguf-jinja2-ssti-poc.jinja",
+      "repo": "security-finder/gguf-jinja2-ssti-poc",
+      "template_sha256": "bc0edd883317b883d9b11d08f67709d09dad173a4565c5884e42779cbf400dbf",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Access to dunder '__subclasses__' (attribute) - an SSTI sandbox-escape primitive.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "26-security-finder-gguf-jinja2-ssti-poc.jinja",
+      "repo": "security-finder/gguf-jinja2-ssti-poc",
+      "template_sha256": "bc0edd883317b883d9b11d08f67709d09dad173a4565c5884e42779cbf400dbf",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Accesses '__class__' on the literal '' - a Jinja2 SSTI sandbox-escape pivot.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "27-security-finder-gguf-ssti-rce-poc.jinja",
+      "repo": "security-finder/gguf-ssti-rce-poc",
+      "template_sha256": "bc0edd883317b883d9b11d08f67709d09dad173a4565c5884e42779cbf400dbf",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Access to dunder '__mro__' (attribute) - an SSTI sandbox-escape primitive.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "27-security-finder-gguf-ssti-rce-poc.jinja",
+      "repo": "security-finder/gguf-ssti-rce-poc",
+      "template_sha256": "bc0edd883317b883d9b11d08f67709d09dad173a4565c5884e42779cbf400dbf",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Access to dunder '__subclasses__' (attribute) - an SSTI sandbox-escape primitive.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "27-security-finder-gguf-ssti-rce-poc.jinja",
+      "repo": "security-finder/gguf-ssti-rce-poc",
+      "template_sha256": "bc0edd883317b883d9b11d08f67709d09dad173a4565c5884e42779cbf400dbf",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Accesses '__class__' on the literal '' - a Jinja2 SSTI sandbox-escape pivot.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "28-thesecguy-poc-gguf-modelscan-bypass.jinja",
+      "repo": "thesecguy/poc-gguf-modelscan-bypass",
+      "template_sha256": "51907af9fbd05d6fb15dba1e392ab601a6e4ffa3cda6b131fc0033b19a40af59",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Access to dunder '__base__' (attribute) - an SSTI sandbox-escape primitive.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "28-thesecguy-poc-gguf-modelscan-bypass.jinja",
+      "repo": "thesecguy/poc-gguf-modelscan-bypass",
+      "template_sha256": "51907af9fbd05d6fb15dba1e392ab601a6e4ffa3cda6b131fc0033b19a40af59",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Access to dunder '__subclasses__' (attribute) - an SSTI sandbox-escape primitive.",
+      "location": "template:L1"
+    },
+    {
+      "fixture": "28-thesecguy-poc-gguf-modelscan-bypass.jinja",
+      "repo": "thesecguy/poc-gguf-modelscan-bypass",
+      "template_sha256": "51907af9fbd05d6fb15dba1e392ab601a6e4ffa3cda6b131fc0033b19a40af59",
+      "rule": "TPL001",
+      "severity": "FAIL",
+      "detail": "Accesses '__class__' on the literal () - a Jinja2 SSTI sandbox-escape pivot.",
+      "location": "template:L1"
+    }
+  ]
+}

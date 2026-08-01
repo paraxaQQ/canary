@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-Security fixes are applied to the latest `0.2.x` release line.
+Security fixes are applied to the latest `0.3.x` release line.
 
 ## Reporting a vulnerability
 

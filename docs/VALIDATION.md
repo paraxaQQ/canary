@@ -114,7 +114,9 @@ detector was attacked from both sides:
   (the 13th and 14th false-positive classes, now the last two rows of the table
   above).
 - **Recall / false negatives.** A red-team workflow generated 49 evasion payloads
-  aimed at the rules and verified each against the live scanner. This hardened
+  aimed at the rules and verified each against the live scanner. The 19 retained as
+  regressions ship in `tools/evasions.json`; the rest were duplicates or variants
+  covered by the same fix. This hardened
   c4nary to catch (all now FAIL): computed / non-constant subscript keys
   (`''['__%s__' % 'class']`), string-method reconstruction (`.format`/`.replace`/
   `|replace`/`%`-format), the `''[...]`/`()[...]`/`(0)[...]` literal-subscript
@@ -151,7 +153,104 @@ detector was attacked from both sides:
   shipping — and the fixes that could not distinguish a real trigger from a benign default
   prompt were *dropped* rather than ship a false positive (see the changelog).
 
+## v0.3 `trust_remote_code` boundary
+
+The RMT family audits Python selected by `auto_map` only when `--bundle` is
+enabled. It parses source with `ast.parse`; it never imports or executes the
+repository. Import-time scope is module and class bodies, decorators, and
+default arguments. Relative-import resolution stops after one hop, and names it
+carries across that hop are resolved rather than dropped: a sink re-exported by a
+sibling (`from .utils import system` beside `from os import system`) is reported
+against the caller, in the plain, aliased, `import *`, and `from . import sibling`
+forms. Where a name cannot be resolved — a second hop, or a sibling that could not
+be read — the file's coverage row drops to `partial` rather than `examined`.
+
+The production scanner still never renders a template. The sandbox render
+checks live only in `tests/test_sandbox_baseline.py`, and an AST guard prevents
+scanner modules from acquiring render or execute calls.
+
+All RMT rules remain WARN or INFO. The benign and hostile fixture gates prove
+matcher behavior and fail-closed handling, not a real-world false-positive
+rate. The frozen v0.2.2 inventory contains only the earlier eight fixed bundle
+filenames, not repository Python listings. Re-enumerating the widened ten-file
+bundle and building the required `auto_map` Python corpus would be a new crawl;
+that was deliberately not performed in this bounded implementation. No RMT
+result inherits the 137,698-template calibration claim.
+
+**Offline proxy measurement (2026-07-31).** RMT was run at import-time scope over
+**3,200 real third-party Python modules** (the development environment's
+`site-packages`). This is not the `auto_map` population and is explicitly not a
+0-false-positive calibration; it is real-world benign Python, which is the surface
+the matcher can get wrong. Result: **17 import-time findings across 15 files —
+0.47% of modules** — 9 `__import__`, 4 `importlib.import_module`, 3 `ctypes.CDLL`, 1
+`compile`. Every one was adjudicated by hand and every one is a correct WARN-tier
+detection of a real import-time construct (compatibility shims, optional-dependency
+probes, a platform library load).
+
+The pass found and closed one false-positive class: bodies of
+`if __name__ == "__main__":` were being treated as import-time scope. They are not
+— `transformers` loads the module with `exec_module`, so `__name__` is the module's
+own name and the guarded body is unreachable. Two findings were affected, both
+`pty.spawn` (`rich/ansi.py`, under the compound guard
+`sys.platform != "win32" and __name__ == "__main__"`). `pty.spawn` is a FAIL
+promotion candidate, so this class would have produced a false FAIL had it survived
+into a calibrated tier. Fixed in `c4nary/rules/python_code.py` with a regression
+test covering the plain guard, the compound guard, the `else` branch (which does
+run), and an unguarded conditional.
+
+**Re-measured (2026-08-01) after adversarial review of that fix.** The review found
+that the fix had itself introduced a bypass, and that the reachability premise it
+rests on can be defeated outright. Both are closed:
+
+- The guard was matched with a structural walk, so `if __name__ != "__main__":` —
+  the branch that always runs under `exec_module` — also suppressed findings. A
+  two-character bypass of the whole family, with the file still reported `examined`.
+  Now matched by exact AST shape, recursing only through `and` chains.
+- A module that *writes* `__name__` (directly, or through `globals()[...] = ` /
+  `vars().update(...)`) makes the guard fire on import. The skip is now withdrawn
+  for such a file and an RMT000 row records why. Matching any *mention* of
+  `globals()` was tried first and rejected: it fired on 1.9% of site-packages
+  modules that merely read it.
+- Three AST walks that run after `ast.parse` were unguarded, so ~1 KB of `1+1+…`
+  parsed cleanly and then exhausted the stack, aborting the entire scan — template
+  FAILs included — at an exit code this tool documents as "WARN findings present".
+  They now fail closed to RMT000, as the parse step already did.
+- Shadowing a builtin sink name at module scope (`exec = exec`) still suppresses
+  that sink, since rebinding can genuinely make it benign, but no longer does so
+  silently: an RMT000 row names the rebound name.
+- Findings are capped at 100 per Python file. A 1 MiB file with `os.system(...)` on
+  every line produced ~69,800 findings and 68 MiB of SARIF — roughly 2 GiB across a
+  full 32-file bundle, which no consumer can ingest (GitHub rejects SARIF above
+  10 MB). The overflow is reported as an exact count and the file is marked
+  `partial`, so a capped report is never mistaken for a complete one.
+
+Re-running the same 3,200 modules after these changes gives **22 findings across 20
+of the 3,200 modules**: the original 17, plus 5 RMT000 rows for modules that
+really do write their own module dict or shadow a sink name. No finding changed tier
+and no new RMT010/RMT011 appeared.
+
+Denominators recorded for the future `auto_map` crawl, derived from the frozen
+192,032-record inventory: **27,897** repositories carry `config.json`, **8,411**
+`tokenizer_config.json`, **532** `processor_config.json`. `preprocessor_config.json`
+and `README.md` were not recorded by the eight-file harness, so their populations
+are unknown. `auto_map` values live in file *contents*, which the inventory never
+stored, so the widened population cannot be derived offline at any confidence.
+
+Repo-native GGUF-less ingest (`--repo`) is not shipped. Bundle and RMT analysis
+remain anchored to an explicit local or remote GGUF scan, and the historical
+192,032-repository population remains scoped to repositories tagged `gguf`.
+
+Policy severity overrides and baselines are report-time controls. The registry
+and default severities remain unchanged, so the frozen template-FAIL result
+describes the default configuration only. Suppressed findings are retained with
+their required justification and do not rewrite the historical corpus record.
+
 ## Known limitations (honest)
+
+- SARIF findings without a source line are schema-valid but GitHub-invisible.
+  Line-bearing findings include a physical artifact URI and start line plus a
+  logical location. `INT004` has no binary region because the tensor manifest
+  retains names, shapes, and dtypes rather than byte offsets.
 
 Static AST analysis has a hard ceiling. c4nary does **not** catch:
 

