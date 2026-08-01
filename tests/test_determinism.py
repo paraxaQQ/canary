@@ -1,10 +1,14 @@
 """Determinism + exit-code acceptance tests (spec §8)."""
 
+import json
 from pathlib import Path
 
 from _ggufgen import write_gguf
 
 from c4nary import cli
+from c4nary.provenance import rules_bundle_sha256
+from c4nary.report import render_json
+from c4nary.rules.registry import finding
 
 CHATML = (
     Path(__file__).parents[1] / "c4nary" / "known_templates" / "chatml.jinja"
@@ -41,6 +45,56 @@ def test_scan_json_is_byte_identical(tmp_path, capsys):
     assert '"summary"' in out1  # sanity: it really produced the report
 
 
+def test_scan_json_keeps_legacy_key_prefixes() -> None:
+    payload = json.loads(render_json(
+        file="model.gguf",
+        sha256="abc",
+        template_sha256="def",
+        findings=[
+            finding(
+                "TPL003",
+                "test",
+                location="template:L2",
+                artifact="tokenizer_config.json",
+            ),
+        ],
+    ))
+
+    assert list(payload)[:5] == [
+        "file",
+        "sha256",
+        "template_sha256",
+        "findings",
+        "summary",
+    ]
+    assert list(payload["findings"][0])[:5] == [
+        "rule_id",
+        "severity",
+        "title",
+        "detail",
+        "location",
+    ]
+    assert payload["findings"][0]["line"] == 2
+    assert payload["artifacts"] == [
+        {"uri": "model.gguf", "sha256": "abc"},
+        {"uri": "tokenizer_config.json", "sha256": None},
+    ]
+
+
+def test_human_notes_are_coverage_derived(tmp_path, capsys) -> None:
+    path = _clean(tmp_path)
+    assert cli.main(["scan", str(path), "--json"]) == 0
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+    coverage = {row["id"]: row for row in payload["coverage"]}
+
+    assert captured.err.splitlines() == [
+        f"note: {coverage['tokenizer.deep']['reason']}",
+        f"note: {coverage['bundle']['reason']}",
+    ]
+    assert payload["rules_bundle_sha256"] == rules_bundle_sha256()
+
+
 def test_exit_code_clean_is_zero(tmp_path, capsys):
     p = _clean(tmp_path)
     rc = cli.main(["scan", str(p)])
@@ -53,6 +107,12 @@ def test_exit_code_malicious_is_two(tmp_path, capsys):
     rc = cli.main(["scan", str(p)])
     capsys.readouterr()
     assert rc == 2
+
+
+def test_fail_on_none_returns_zero_for_fail(tmp_path, capsys):
+    p = _malicious(tmp_path)
+    assert cli.main(["scan", str(p), "--fail-on", "none"]) == 0
+    capsys.readouterr()
 
 
 def test_fail_on_warn_returns_one(tmp_path, capsys):

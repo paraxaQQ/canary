@@ -33,7 +33,10 @@ jobs:
           python-version: "3.12"
       - name: Build and check distributions
         run: |
-          python -m pip install build twine pytest requests jinja2
+          # jsonschema included deliberately: without it the SARIF conformance tests
+          # importorskip away and this job -- the only one that tests what PyPI users
+          # actually receive -- reports green having validated no SARIF at all.
+          python -m pip install build twine pytest requests jinja2 jsonschema
           python -m build
           python -m twine check dist/*
       - name: Test source distribution

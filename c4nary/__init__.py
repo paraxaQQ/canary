@@ -4,17 +4,18 @@ The tool inspects a GGUF model's embedded Jinja2 chat template and metadata for
 known-dangerous constructs (SSTI / sandbox-escape primitives) and can diff a
 model against a known-good reference to detect tampering.
 
-Hard invariants (see spec §7):
+Hard invariants (see the "Hard invariants" section of README.md, the live contract):
   1. Never render or execute a template or model. AST parse only.
   2. The parser and analysis core have no network access. Explicit remote-scan
      helpers are isolated in c4nary.remote.
   3. Read-only: never write to or modify input files.
-  4. Deterministic: identical input -> identical output bytes.
+  4. Deterministic for a fixed Python/Jinja2 pair: identical input -> identical
+     output bytes.
   5. Every finding maps to a registered rule with a stable id.
 
 It detects *risk indicators*; it does not prove a model is safe or malicious.
 """
 
-__version__ = "0.2.2"
+__version__ = "0.3.0"
 
 __all__ = ["__version__"]

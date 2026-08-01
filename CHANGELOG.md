@@ -2,6 +2,84 @@
 
 ## Unreleased
 
+## 0.3.0 — 2026-08-01
+
+### Changed (breaking)
+- `canary rules --json` and the MCP `list_rules` tool now return an object
+  `{tool_version, rules_bundle_sha256, rules: [...]}` instead of a bare array. A
+  consumer doing `canary rules --json | jq '.[].rule_id'` must become `jq '.rules[].rule_id'`.
+
+### Detection
+- Audit `auto_map` across config, tokenizer, processor, and preprocessor config files
+  without duplicate CFG004 warnings.
+- Add WARN/INFO-only `RMT` rules for fail-closed custom-Python parsing, import-time
+  execution and capability sinks, decode-then-execute composition, and unfetched
+  cross-repository references.
+- Resolve custom Python through actual import bindings and one bounded relative-import
+  hop. Audited source is parsed with `ast.parse` only and is never imported or executed.
+  Bindings are carried across the hop, so a sink split across two files -- neither
+  dangerous alone -- is attributed to the caller in the plain, aliased, `import *`, and
+  `from . import sibling` forms. A name that cannot be resolved leaves the caller's
+  coverage row `partial` instead of `examined`.
+
+### Reporting
+- Add stable artifact and source-line fields while preserving legacy location strings.
+- Add deterministic per-surface coverage manifests and a rules-bundle provenance digest.
+  The manifest records `--policy` as its own surface, so a report whose severities were
+  re-tiered is no longer indistinguishable from one with nothing to report.
+- Add deterministic SARIF 2.1.0 output validated against the official OASIS schema.
+- Add per-rule report policy, `--fail-on none`, and justified fingerprint baselines.
+  Suppressed findings remain visible in human, JSON, SARIF, and coverage output.
+
+### Safety and validation
+- Refuse truncated, oversized, or unparseable custom Python as a clean audit, and validate
+  attacker-derived Python filenames at every local, MCP, and remote reader sink. A name
+  must be an importable module name, which closes a Windows path escape: `C:foo.py`
+  carries no separator and passed every other check, but `os.path.join` drops the base
+  directory for a drive-qualified name and read from the current directory of `C:`.
+- Freeze all 140 v0.2.2 FAIL findings as offline fixtures and assert legacy identity
+  remains unchanged.
+- Codify the Jinja sandbox baseline for Jinja 3.1.6+ without rendering in production.
+- Extend the never-render/never-execute source guard to the indirect spellings that
+  matter -- `builtins.exec`, `pickle.loads`, `runpy.run_path`, `subprocess.*` and
+  `getattr(obj, "render")` -- and assert each one is caught rather than trusting a guard
+  nobody has watched fail.
+- Make both corpus gates account positively for every registered FAIL rule, with a
+  committed reason for each surface they cannot exercise.
+- Qualify determinism by the fixed Python/Jinja2 version pair and scope the 0-FP record to
+  the template FAIL family actually measured.
+- Refuse to write a manifest over the artifact under audit. `hash m.gguf --manifest m.gguf`
+  previously truncated the model, replaced it with JSON, and exited 0.
+- Fail closed when the AST walkers that run after `ast.parse` are exhausted. A ~1 KB
+  deeply-nested but valid Python file aborted the whole scan, discarding template findings.
+- Bound the recursive `tokenizer.json` and special-token walkers by depth. JSON nesting is
+  unbounded while the reader cap is 48 MiB, so a ~7 KB file nested 1000 deep aborted the
+  scan.
+- Report an unexpected Hugging Face API response as a clean error instead of a traceback.
+- Bound retry sleeping: a hostile `Retry-After` could stall a fetch for hours.
+- Cap import-time findings at 100 per Python file and report the overflow as an exact
+  count. One 1 MiB file of `os.system(...)` per line produced ~69,800 findings and 68 MiB
+  of SARIF, projecting to roughly 2 GiB across a full bundle -- past the point any tool
+  can ingest it (GitHub rejects SARIF over 10 MB). A capped file is reported `partial`,
+  never `examined`.
+- Decode fetched bundle text as UTF-8 rather than the server-supplied charset, which chose
+  what the rules saw and could raise an uncaught `LookupError`.
+
+### False positives
+- Stop treating `if __name__ == "__main__":` bodies as import-time scope. `transformers`
+  loads custom Python with `exec_module`, so `__name__` is the module's own name and the
+  guarded body is unreachable. The skip is withdrawn, with an RMT000 row, for a file that
+  writes `__name__` and could make the guard fire.
+- Give every FAIL rule that can fire twice at one location a distinguishing subject
+  (TOK002, TOK003, TPL004, TPL021, STR001, STR003), and include the subject in
+  deduplication so two distinct TPL021 triggers on one minified line both report.
+
+### Packaging
+- Cap the `mcp` extra at `mcp>=1.2,<2`: mcp 2.0 removed `mcp.server.fastmcp`, which the
+  server imports.
+- Add `jsonschema` and `tomli` (Python < 3.11) to the `dev` extra so the SARIF-conformance
+  and version-parity tests are not silently skipped.
+
 ## 0.2.2 — 2026-07-23
 
 ### Security

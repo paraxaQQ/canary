@@ -26,8 +26,9 @@ import json
 import os
 
 from . import __version__
+from .coverage import Surface, build_scan_coverage
 from .integrity import (
-    build_manifest,
+    write_manifest,
     compare_manifest,
     diff_is_empty,
     diff_models,
@@ -35,6 +36,7 @@ from .integrity import (
     sha256_file,
 )
 from .parser import parse_gguf
+from .provenance import rules_bundle_sha256
 from .report import FAIL, INFO, WARN, findings_to_dicts, summarize, verdict_line
 from .rules.metadata import analyze_metadata
 from .rules.registry import all_rules
@@ -76,8 +78,9 @@ def run_scan(
 
     This is the primary tool. It runs the template (TPL*), metadata (MET*),
     tokenizer (TOK*), and -- for local files -- structural (STR*) rule sets; with
-    ``bundle`` it also audits the repo's config, tokenizer.json, and model card
-    (CFG*/NRM*/DOC*/TPL030). It returns every finding with its stable rule id, severity
+    ``bundle`` it also audits the repo's config, tokenizer.json, model card, and any
+    ``auto_map`` custom Python (CFG*/NRM*/DOC*/RMT*/TPL030). It returns every finding
+    with its stable rule id, severity
     (FAIL/WARN/INFO), plain-language detail, and location. Nothing is rendered or executed.
 
     Args:
@@ -98,38 +101,37 @@ def run_scan(
             template<->tokenizer seam checks (TOK012+). Off by default (extra bandwidth).
         bundle: If true, also fetch (remote) or read (local sibling) the repo's config
             (generation_config.json / config.json), tokenizer.json, special-token files,
-            model card (README.md), and any divergent template source, and run the
-            CFG / NRM / DOC / TPL030 rules over them. Off by default (more fetching).
+            model card (README.md), any divergent template source, and the custom Python
+            named by an ``auto_map`` entry -- which is read and parsed with ``ast`` only,
+            never imported or executed -- and run the CFG / NRM / DOC / TPL030 / RMT
+            rules over them. Off by default (more fetching).
 
     Returns:
         A dict with ``file``, ``sha256`` (null for remote), ``template_sha256``,
         ``findings`` (sorted, deterministic), a ``summary`` count, an honest
-        ``verdict`` line, and any ``notes`` about skipped checks.
+        ``verdict`` line, any ``notes`` about skipped checks, a ``coverage`` manifest
+        naming what was examined, skipped, absent, truncated or unparseable, plus
+        ``tool_version`` and ``rules_bundle_sha256`` identifying the ruleset that ran.
     """
-    notes: list[str] = []
     materialize = _DEEP_TOK_KEYS if (deep_tokenizer or bundle) else None
     if remote:
         from .remote import fetch_remote_model
 
         model, display = fetch_remote_model(path, hf_filename, materialize=materialize)
         file_sha = None
+        template_findings = analyze_templates(model)
         findings = (
-            analyze_templates(model)
+            template_findings
             + analyze_metadata(model)
             + analyze_tokenizer(model, deep=deep_tokenizer)
         )
-        notes.append(
-            "remote header scan: structural (STR*) and whole-file integrity "
-            "checks need the complete file and were skipped."
-        )
-        if manifest_path:
-            notes.append("manifest comparison ignored for remote scans (needs the full file).")
     else:
         model = parse_gguf(path, materialize=materialize)
         display = model.path
         file_sha = sha256_file(path)
+        template_findings = analyze_templates(model)
         findings = (
-            analyze_templates(model)
+            template_findings
             + analyze_metadata(model)
             + analyze_tokenizer(model, deep=deep_tokenizer)
             + analyze_structure(model)
@@ -139,29 +141,47 @@ def run_scan(
                 manifest = json.load(fh)
             findings += compare_manifest(model, file_sha, manifest)
 
+    bundle_surfaces: list[Surface] = []
     if bundle:
-        from .bundle import bundle_findings
+        from .bundle import ReadResult, _safe_bundle_name, bundle_findings
 
-        def _bundle_read(name: str, max_bytes: int = 1 << 20) -> "str | None":
+        def _bundle_read(
+            name: str,
+            max_bytes: int = 1 << 20,
+            *,
+            python_only: bool = False,
+        ) -> "ReadResult | None":
+            if python_only:
+                name = _safe_bundle_name(name)
             if remote:
                 from .remote import fetch_repo_text
-                return fetch_repo_text(path, name, max_bytes=max_bytes)
+                return fetch_repo_text(
+                    path,
+                    name,
+                    max_bytes=max_bytes,
+                    python_only=python_only,
+                )
             sib = os.path.join(os.path.dirname(os.path.abspath(path)), name)
             if os.path.isfile(sib):
-                with open(sib, encoding="utf-8", errors="replace") as fh:
-                    return fh.read(max_bytes)
+                with open(sib, "rb") as fh:
+                    data = fh.read(max_bytes + 1)
+                return ReadResult(
+                    data[:max_bytes].decode("utf-8", errors="replace"),
+                    truncated=len(data) > max_bytes,
+                )
             return None
 
-        findings += bundle_findings(model, _bundle_read)
+        bundle_results, bundle_surfaces = bundle_findings(model, _bundle_read)
+        findings += bundle_results
 
-    notes.append(
-        "deep tokenizer pass ran (TOK012+ seam checks active)." if deep_tokenizer
-        else "deep tokenizer seam checks (TOK012+) not run; set deep_tokenizer=true."
-    )
-    notes.append(
-        "bundle scan ran (CFG/NRM/DOC/TPL030 over repo config, tokenizer.json, card)."
-        if bundle else
-        "bundle scan (repo config/card/tokenizer.json) not run; set bundle=true."
+    coverage = build_scan_coverage(
+        model,
+        remote=remote,
+        deep_tokenizer=deep_tokenizer,
+        bundle=bundle,
+        manifest_requested=manifest_path is not None,
+        template_findings=template_findings,
+        bundle_surfaces=bundle_surfaces,
     )
 
     return {
@@ -171,7 +191,10 @@ def run_scan(
         "findings": findings_to_dicts(findings),
         "summary": _summary(findings),
         "verdict": verdict_line(findings),
-        "notes": notes,
+        "notes": coverage.notes(),
+        "coverage": coverage.to_dict(),
+        "tool_version": __version__,
+        "rules_bundle_sha256": rules_bundle_sha256(),
     }
 
 
@@ -216,28 +239,30 @@ def run_hash(path: str, write_manifest_to: str | None = None) -> dict:
         "template_sha256": model_template_sha256(model),
     }
     if write_manifest_to:
-        manifest = build_manifest(model, file_sha)
-        with open(write_manifest_to, "w", encoding="utf-8") as fh:
-            fh.write(json.dumps(manifest, indent=2, ensure_ascii=True))
+        write_manifest(model, file_sha, write_manifest_to, path)
         out["manifest_written"] = write_manifest_to
     return out
 
 
-def list_rules() -> list[dict]:
+def list_rules() -> dict:
     """List every detection rule c4nary can emit (id, severity, title, description).
 
     Each finding from ``scan`` maps to exactly one of these stable rule ids, so
     this is the legend for interpreting results.
     """
-    return [
-        {
-            "rule_id": r.rule_id,
-            "severity": r.severity,
-            "title": r.title,
-            "description": r.description,
-        }
-        for r in all_rules()
-    ]
+    return {
+        "tool_version": __version__,
+        "rules_bundle_sha256": rules_bundle_sha256(),
+        "rules": [
+            {
+                "rule_id": rule.rule_id,
+                "severity": rule.severity,
+                "title": rule.title,
+                "description": rule.description,
+            }
+            for rule in all_rules()
+        ],
+    }
 
 
 def build_server():

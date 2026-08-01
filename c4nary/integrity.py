@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import difflib
 import hashlib
+import json
 from pathlib import Path
 from typing import Any
 
@@ -71,6 +72,25 @@ def build_manifest(model: GGUFModel, file_sha256: str) -> dict[str, Any]:
         "metadata": _serialize_metadata(model),
         "tensors": _serialize_tensors(model),
     }
+
+
+def write_manifest(
+    model: GGUFModel, file_sha256: str, out_path: str | Path, model_path: str | Path
+) -> None:
+    """Write the manifest for ``model``, refusing to write over the artifact itself.
+
+    The only write in the package: ``hash m.gguf --manifest m.gguf`` otherwise truncates
+    the model and exits 0. ``samefile`` rather than ``resolve() ==`` catches hardlinks
+    and junctions too.
+    """
+
+    out, source = Path(out_path), Path(model_path)
+    if out.exists() and out.samefile(source):
+        raise OSError(
+            f"refusing to write the manifest over the artifact under audit: {out_path}"
+        )
+    with out.open("w", encoding="utf-8") as fh:
+        fh.write(json.dumps(build_manifest(model, file_sha256), indent=2, ensure_ascii=True))
 
 
 def compare_manifest(

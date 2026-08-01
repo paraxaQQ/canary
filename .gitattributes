@@ -1,0 +1,5 @@
+c4nary/known_templates/*.jinja      -text
+tests/fixtures/*.jinja              -text
+tests/fixtures/*.json               -text
+tests/fixtures/corpus-fail/*.jinja  -text
+tests/fixtures/rmt/*.py             -text

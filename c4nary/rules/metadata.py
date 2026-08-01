@@ -267,7 +267,10 @@ def _scalar_string_checks(key: str, value: str) -> list[Finding]:
     # Also route Jinja-carrying values through the AST rules (a second template in metadata).
     for f in analyze_embedded_template(value):
         findings.append(dataclasses.replace(
-            f, location=f"{key}:{f.location}" if f.location else key))
+            f,
+            location=f"{key}:{f.location}" if f.location else key,
+            artifact=key,
+        ))
 
     return findings
 

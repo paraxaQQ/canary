@@ -246,7 +246,10 @@ def analyze_templates(model: GGUFModel) -> list[Finding]:
             if multi:
                 tag = f"chat_template[{variant}]"
                 f = dataclasses.replace(
-                    f, location=f"{tag} {f.location}" if f.location else tag)
+                    f,
+                    location=f"{tag} {f.location}" if f.location else tag,
+                    artifact=tag,
+                )
             out.append(f)
     return out
 
@@ -311,7 +314,7 @@ def analyze_repo_templates(
                 location=source))
         for f in analyze_template(tmpl):                 # scan the divergent / extra template
             loc = f"{source}:{f.location}" if f.location else source
-            out.append(dataclasses.replace(f, location=loc))
+            out.append(dataclasses.replace(f, location=loc, artifact=source))
     return out
 
 
@@ -332,7 +335,8 @@ def _ast_checks(ast: nodes.Template) -> list[Finding]:
                     "TPL001",
                     f"Accesses '__class__' on the literal {_pivot_repr(node.node)} - a "
                     f"Jinja2 SSTI sandbox-escape pivot.",
-                    location=loc))
+                    location=loc,
+                    subject=f"class-pivot:{_pivot_repr(node.node)}"))
         elif isinstance(node, nodes.Getitem):
             key = _const_str(node.arg)
             if key is not None:
@@ -356,7 +360,8 @@ def _ast_checks(ast: nodes.Template) -> list[Finding]:
                     "TPL001",
                     f"Subscripts the literal {_pivot_repr(node.node)} - a Jinja2 "
                     f"SSTI sandbox-escape pivot (often with a computed key).",
-                    location=loc))
+                    location=loc,
+                    subject=f"subscript-pivot:{_pivot_repr(node.node)}"))
         elif isinstance(node, nodes.Name):
             _classify_name(findings, node.name, loc, context="name")
         elif isinstance(node, nodes.Const) and isinstance(node.value, str):
@@ -369,22 +374,27 @@ def _ast_checks(ast: nodes.Template) -> list[Finding]:
                         "TPL001",
                         f"String literal contains introspection dunder {tok!r} "
                         f"(laundered sandbox-escape key).",
-                        location=loc))
+                        location=loc,
+                        subject=f"laundered-literal:{tok}"))
                     break
 
         # Abusable filters.
         if isinstance(node, nodes.Filter) and node.name == "attr":
             findings.append(finding(
                 "TPL004",
-                "Uses the |attr filter, which bypasses Jinja2's attribute sandbox.",
+                "Uses the |attr filter, which bypasses Jinja2's attribute sandbox "
+                "through 3.1.5 (CVE-2025-27516).",
                 location=loc,
+                subject="attr-filter",
             ))
         if isinstance(node, nodes.Filter) and node.name == "map":
             if any(_const_str(a) == "attr" for a in node.args):
                 findings.append(finding(
                     "TPL004",
-                    "Uses map('attr'), an attribute-sandbox bypass primitive.",
+                    "Uses map('attr'), an attribute-sandbox bypass primitive through "
+                    "Jinja2 3.1.5 (CVE-2025-27516).",
                     location=loc,
+                    subject="map-attr",
                 ))
             # map(attribute='X') is a benign field extractor in function-calling
             # templates (map(attribute='function'/'role')); only flag when X is a
@@ -401,7 +411,8 @@ def _ast_checks(ast: nodes.Template) -> list[Finding]:
                         "TPL001",
                         "Uses map(attribute='__class__') - extracts each element's type "
                         "object, the pivot of a map-based SSTI escape chain.",
-                        location=loc))
+                        location=loc,
+                        subject="map-attribute:__class__"))
 
         # Split-string reconstruction of dangerous tokens.
         if isinstance(node, (nodes.Concat, nodes.Add)):
@@ -504,12 +515,14 @@ def _classify_name(findings: list[Finding], name: str, loc: str, *, context: str
             "TPL001",
             f"Access to dunder {name!r} ({context}) - an SSTI sandbox-escape primitive.",
             location=loc,
+            subject=f"dunder:{name}:{context}",
         ))
     if folded in DANGEROUS_NAMES:
         findings.append(finding(
             "TPL003",
             f"Reference to dangerous name {name!r} ({context}).",
             location=loc,
+            subject=f"name:{name}:{context}",
         ))
     elif folded in DANGEROUS_MODULES and context != "attribute":
         # A bare module attribute (terminal_state.os) is a benign field; the SSTI
@@ -518,6 +531,7 @@ def _classify_name(findings: list[Finding], name: str, loc: str, *, context: str
             "TPL003",
             f"Reference to dangerous module {name!r} ({context}).",
             location=loc,
+            subject=f"module:{name}:{context}",
         ))
 
 
@@ -536,6 +550,7 @@ def _classify_gadget_chain(
             "TPL002",
             f"Jinja2 gadget {node.name!r} reaches Python globals through {key!r}.",
             location=loc,
+            subject=f"gadget:{node.name}:{key}",
         ))
 
 
@@ -550,6 +565,7 @@ def _check_reconstructed(findings: list[Finding], assembled: str | None, loc: st
                 f"String operations assemble the dangerous token {token!r} "
                 f"(reconstructed: {assembled!r}).",
                 location=loc,
+                subject=f"recon:{token}:{assembled}",
             ))
             return
 
@@ -668,6 +684,16 @@ def analyze_embedded_template(source: str) -> list[Finding]:
     except (jinja2.TemplateSyntaxError, RecursionError):
         return []
     return _ast_checks(ast) + _behavioral_checks(ast) + _transport_checks(ast)
+
+
+def embedded_template_unparseable(source: str) -> bool:
+    if not source or ("{%" not in source and "{{" not in source):
+        return False
+    try:
+        parse_template(source)
+    except (jinja2.TemplateSyntaxError, RecursionError):
+        return True
+    return False
 
 
 def _fmt_cps(codepoints: list[int]) -> str:
@@ -805,6 +831,7 @@ def _check_if(node: nodes.If, tainted: frozenset[str] = frozenset(),
                 "A content-keyed branch (or its else) emits imperative instruction text "
                 "not sourced from the conversation (content trigger + injected instruction).",
                 location=loc,
+                subject="trigger:" + ",".join(sorted(trigger_lits)),
             ))
         elif (literal or tainted_var) and format_word_lits:
             out.append(finding(
@@ -813,6 +840,7 @@ def _check_if(node: nodes.If, tainted: frozenset[str] = frozenset(),
                 "not sourced from the conversation, keyed on a format-word trigger "
                 "(content trigger + injected instruction, format-costume camouflage).",
                 location=loc,
+                subject="format-trigger:" + ",".join(sorted(format_word_lits)),
             ))
 
     # TPL022 fires only when the date is *compared* against a value (behavior
@@ -1386,7 +1414,10 @@ def _dedupe(findings: list[Finding]) -> list[Finding]:
     seen: set[tuple] = set()
     out: list[Finding] = []
     for f in findings:
-        key = (f.rule_id, f.location, f.detail)
+        # Must match what the fingerprint distinguishes. TPL021 carries a constant detail
+        # and puts the trigger literal only in subject, so without it two distinct
+        # content gates on one minified line collapse and the second is never emitted.
+        key = (f.rule_id, f.location, f.detail, f.subject)
         if key not in seen:
             seen.add(key)
             out.append(f)

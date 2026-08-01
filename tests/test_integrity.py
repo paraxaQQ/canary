@@ -2,14 +2,18 @@
 
 from pathlib import Path
 
+import pytest
+
 from _ggufgen import write_gguf
 
+from c4nary import cli
 from c4nary.integrity import (
     build_manifest,
     compare_manifest,
     diff_is_empty,
     diff_models,
     sha256_file,
+    write_manifest,
 )
 from c4nary.parser import parse_gguf
 
@@ -69,3 +73,40 @@ def test_diff_identical_is_empty(tmp_path):
     # tail (weight bytes) differs but structure is identical -> empty diff.
     diff = diff_models(parse_gguf(a), parse_gguf(b))
     assert diff_is_empty(diff)
+
+
+def test_manifest_refuses_to_overwrite_the_artifact_under_audit(tmp_path, capsys):
+    """`canary hash m.gguf --manifest m.gguf` must not destroy m.gguf.
+
+    Invariant 3 ("input files are never written or modified", README) had no test
+    behind it, and the manifest writer is the only write in the package. Opening the
+    caller-supplied path with mode "w" truncated the model, replaced it with JSON, and
+    still exited 0 reporting success.
+    """
+
+    model = _model(tmp_path, "m.gguf", CHATML)
+    before = model.read_bytes()
+
+    assert cli.main(["hash", str(model), "--manifest", str(model)]) > 2
+    assert model.read_bytes() == before
+    assert "refusing to write the manifest" in capsys.readouterr().err
+
+    parsed = parse_gguf(str(model))
+    with pytest.raises(OSError, match="refusing to write"):
+        write_manifest(parsed, sha256_file(model), str(model), str(model))
+    assert model.read_bytes() == before
+
+
+def test_no_command_mutates_its_input(tmp_path, capsys):
+    """The standing evidence for invariant 3: bytes in, same bytes out."""
+
+    first = _model(tmp_path, "a.gguf", CHATML)
+    second = _model(tmp_path, "b.gguf", CHATML, tail=b"otherweights")
+    digests = {p: sha256_file(p) for p in (first, second)}
+
+    cli.main(["scan", str(first)])
+    cli.main(["hash", str(first), "--manifest", str(tmp_path / "m.json")])
+    cli.main(["diff", str(first), str(second)])
+    capsys.readouterr()
+
+    assert {p: sha256_file(p) for p in (first, second)} == digests

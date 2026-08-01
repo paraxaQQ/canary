@@ -1,5 +1,9 @@
 # Build Spec — `gguf-audit` (working name)
 
+> **Superseded.** This v1 working-name spec predates c4nary's shipped remote and
+> bundle paths and uses obsolete rule ids. See `README.md` and
+> `docs/THREAT-MODEL.md` for the current product contract.
+
 > A **deterministic, offline, read-only** tool that detects **chat-template
 > backdoors in GGUF model files** — both code-execution (SSTI) templates and
 > *behavioral* templates that conditionally manipulate model output. These are

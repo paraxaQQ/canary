@@ -10,6 +10,10 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .coverage import Coverage
 
 # Severity levels. Ordered FAIL < WARN < INFO for sorting (most severe first).
 FAIL = "FAIL"
@@ -28,6 +32,14 @@ class Finding:
     title: str
     detail: str           # plain-language explanation
     location: str | None  # where (node path / line, metadata key) or None
+    artifact: str | None = None
+    line: int | None = None
+    suppressed: bool = False
+    suppression_justification: str | None = None
+    # Discriminates repeat occurrences of one rule at one location so a baseline
+    # entry suppresses a single finding rather than the whole (rule, location)
+    # group. Fingerprint input only; never rendered.
+    subject: str | None = None
 
     def sort_key(self) -> tuple[int, str, str]:
         return (_SEVERITY_RANK.get(self.severity, 99), self.rule_id, self.location or "")
@@ -42,7 +54,7 @@ def sort_findings(findings: list[Finding]) -> list[Finding]:
 def summarize(findings: list[Finding]) -> dict[str, int]:
     counts = {FAIL: 0, WARN: 0, INFO: 0}
     for f in findings:
-        if f.severity in counts:
+        if not f.suppressed and f.severity in counts:
             counts[f.severity] += 1
     return counts
 
@@ -60,6 +72,11 @@ def verdict_line(findings: list[Finding]) -> str:
         return (
             "Risk indicators found - review recommended. "
             "These are heuristic flags, not proof of malicious behavior."
+        )
+    if any(f.suppressed for f in findings):
+        return (
+            "Detected risk indicators are suppressed by the supplied baseline. "
+            "They remain in this report with their review justifications."
         )
     return (
         "No risk indicators detected. "
@@ -93,6 +110,9 @@ def render_human(
     lines.append(
         f"  {counts[FAIL]} fail, {counts[WARN]} warn, {counts[INFO]} info"
     )
+    suppressed = sum(f.suppressed for f in findings)
+    if suppressed:
+        lines.append(f"  {suppressed} suppressed by baseline")
 
     for severity in _SEVERITY_ORDER:
         group = [f for f in findings if f.severity == severity]
@@ -102,13 +122,20 @@ def render_human(
         lines.append(f"[{severity}]")
         for f in group:
             loc = f" ({f.location})" if f.location else ""
-            lines.append(f"  {f.rule_id} {f.title}{loc}")
+            suffix = " [suppressed by baseline]" if f.suppressed else ""
+            lines.append(f"  {f.rule_id} {f.title}{loc}{suffix}")
             lines.append(f"      {f.detail}")
+            if f.suppression_justification is not None:
+                lines.append(
+                    f"      baseline justification: {f.suppression_justification}"
+                )
     lines.append("")
     return "\n".join(lines)
 
 
 def findings_to_dicts(findings: list[Finding]) -> list[dict]:
+    from .policy import finding_fingerprint
+
     return [
         {
             "rule_id": f.rule_id,
@@ -116,6 +143,11 @@ def findings_to_dicts(findings: list[Finding]) -> list[dict]:
             "title": f.title,
             "detail": f.detail,
             "location": f.location,
+            "artifact": f.artifact,
+            "line": f.line,
+            "suppressed": f.suppressed,
+            "suppression_justification": f.suppression_justification,
+            "fingerprint": finding_fingerprint(f),
         }
         for f in sort_findings(findings)
     ]
@@ -127,13 +159,19 @@ def render_json(
     sha256: str,
     template_sha256: str | None,
     findings: list[Finding],
+    coverage: "Coverage | None" = None,
 ) -> str:
+    from .provenance import rules_bundle_sha256
+
     payload = {
         "file": file,
         "sha256": sha256,
         "template_sha256": template_sha256,
         "findings": findings_to_dicts(findings),
         "summary": _summary_lower(findings),
+        "artifacts": artifact_rows(file=file, sha256=sha256, findings=findings),
+        "coverage": coverage.to_dict() if coverage is not None else [],
+        "rules_bundle_sha256": rules_bundle_sha256(),
     }
     # Fixed separators + no sort_keys: field order is the literal order above,
     # which is stable -> deterministic bytes.
@@ -142,4 +180,27 @@ def render_json(
 
 def _summary_lower(findings: list[Finding]) -> dict[str, int]:
     counts = summarize(findings)
-    return {"fail": counts[FAIL], "warn": counts[WARN], "info": counts[INFO]}
+    return {
+        "fail": counts[FAIL],
+        "warn": counts[WARN],
+        "info": counts[INFO],
+        "suppressed": sum(f.suppressed for f in findings),
+    }
+
+
+def artifact_rows(
+    *,
+    file: str,
+    sha256: str,
+    findings: list[Finding],
+) -> list[dict[str, str | None]]:
+    rows: list[dict[str, str | None]] = [{"uri": file, "sha256": sha256 or None}]
+    rows.extend(
+        {"uri": artifact, "sha256": None}
+        for artifact in sorted({
+            finding.artifact
+            for finding in findings
+            if finding.artifact is not None and finding.artifact != file
+        })
+    )
+    return rows

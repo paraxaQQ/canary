@@ -81,6 +81,8 @@ docs/ROADMAP.md
 docs/V2-VALIDATION-LEDGER.md
 docs/SESSION-HANDOFF.md
 docs/RECALIBRATION-PLAN.md
+docs/V0.3-SCOPE.md
+docs/V0.3-IMPL-REPORT.md
 tools/oracle/
 runs.jsonl
 escapes.jsonl

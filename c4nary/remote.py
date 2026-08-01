@@ -16,6 +16,7 @@ from __future__ import annotations
 import os
 from urllib.parse import urlsplit
 
+from .bundle import ReadResult, _safe_bundle_name
 from .parser import GGUFModel, parse_gguf_bytes
 
 HF_BASE = "https://huggingface.co"
@@ -69,10 +70,17 @@ def _session():
             from urllib3.util.retry import Retry  # noqa: PLC0415
         except ImportError:  # pragma: no cover - very old urllib3
             from requests.packages.urllib3.util.retry import Retry  # noqa: PLC0415
-        retry = Retry(total=6, connect=3, read=3, backoff_factor=1.5,
+        # The per-request timeouts bound socket activity, not sleeping, so an honoured
+        # Retry-After is otherwise unbounded stall. urllib3 1.26 lacks both kwargs.
+        bounds = {"backoff_max": 30, "retry_after_max": 60}
+        common = dict(total=6, connect=3, read=3, backoff_factor=1.5,
                       status_forcelist=(429, 500, 502, 503, 504),
                       allowed_methods=frozenset({"GET"}),
                       respect_retry_after_header=True, raise_on_status=False)
+        try:
+            retry = Retry(**common, **bounds)
+        except TypeError:  # pragma: no cover - urllib3 < 2
+            retry = Retry(**common)
         adapter = HTTPAdapter(max_retries=retry, pool_connections=64, pool_maxsize=64)
         s = requests.Session()
         s.mount("https://", adapter)
@@ -122,7 +130,14 @@ def _hf_list_files(repo: str) -> list[str]:
         raise RemoteError(f"could not reach Hugging Face: {exc}") from exc
     if r.status_code != 200:
         raise RemoteError(f"Hugging Face API returned {r.status_code} for {repo!r}")
-    return [s.get("rfilename", "") for s in r.json().get("siblings", [])]
+    # `scan hf:// --remote` yields an empty repo id, which hits the model-LIST endpoint
+    # and returns a JSON array. Indexing straight in raises AttributeError, which is not
+    # a RemoteError and escapes the CLI handler as a traceback.
+    payload = r.json()
+    siblings = payload.get("siblings") if isinstance(payload, dict) else None
+    if not isinstance(siblings, list):
+        raise RemoteError(f"unexpected Hugging Face API response for repo {repo!r}")
+    return [s.get("rfilename", "") for s in siblings if isinstance(s, dict)]
 
 
 def _read_capped_response(response, n_bytes: int) -> bytes:
@@ -189,11 +204,19 @@ def fetch_remote_model(target: str, filename: str | None = None,
         f"header did not fit in {_FETCH_STAGES_MB[-1]}MB (last error: {last})")
 
 
-def fetch_repo_text(target: str, filename: str, *, max_bytes: int = 1 << 20) -> str | None:
+def fetch_repo_text(
+    target: str,
+    filename: str,
+    *,
+    max_bytes: int = 1 << 20,
+    python_only: bool = False,
+) -> ReadResult | None:
     """Fetch a small repo *bundle* file (generation_config.json, config.json, README.md)
-    for an opt-in bundle scan. Returns its text, or ``None`` if absent/inaccessible/too
-    large or if ``target`` is a direct file URL (no repo bundle). Capped -- these are
-    small config/doc files, never weights."""
+    for an opt-in bundle scan. Returns its text plus a truncation bit, or ``None`` if
+    absent/inaccessible or if ``target`` is a direct file URL (no repo bundle).
+    Capped -- these are small config/doc/Python files, never weights."""
+    if python_only:
+        filename = _safe_bundle_name(filename)
     if target.startswith(("http://", "https://")):
         return None
     repo = target[len("hf://"):] if target.startswith("hf://") else target
@@ -211,8 +234,11 @@ def fetch_repo_text(target: str, filename: str, *, max_bytes: int = 1 << 20) -> 
     if r.status_code not in (200, 206):
         r.close()
         return None
-    encoding = r.encoding or "utf-8"
     data = _read_capped_response(r, max_bytes + 1)
-    if len(data) > max_bytes:
-        return None
-    return data.decode(encoding, errors="replace")
+    # utf-8, never the server's Content-Type charset: that would let the server choose
+    # what text the rules see, and an unknown codec raises LookupError. Also keeps the
+    # remote decode byte-identical to the local sibling reader.
+    return ReadResult(
+        data[:max_bytes].decode("utf-8", errors="replace"),
+        truncated=len(data) > max_bytes,
+    )

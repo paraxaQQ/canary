@@ -1,4 +1,4 @@
-<!-- Generated from an adversarially-verified 8-vector threat-enumeration. -->
+<!-- Generated from an adversarially-verified threat enumeration. -->
 <!-- Detection tags: DET = deterministic structural check; HEUR = heuristic review-prompt; OUT = outside static scope. -->
 
 # GGUF Backdoor & Silent-Degradation Taxonomy (beyond Jinja SSTI)
@@ -112,8 +112,8 @@ materialization of the specific arrays.
 
 Weights+template byte-faithful; numeric metadata fed into inference math is
 edited. Cross-check scalars against tensor **shapes** (never weight data). Highest
-DET value, **entirely unimplemented** today (MET005 only checks `<arch>.*` keys
-exist).
+DET value, and **shipped since v0.2.0** as MET010-MET016 (MET010/011/012/013/016
+at FAIL). MET005 remains the separate, weaker check that `<arch>.*` keys exist.
 
 - **`block_count` vs blk.* count** — distinct `^blk\.(\d+)\.`, max+1, contiguity.
   **DET (FAIL)**.
@@ -134,9 +134,10 @@ exist).
 
 ## 5. Structural / parser-exploitation & provenance
 
-Needs two read-only parser additions: (a) retain `file_size` + computed
-data-section start; (b) preserve metadata key order + duplicate counts.
-`TensorInfo.offset` is parsed but unused.
+Both read-only parser additions this section once called for have shipped:
+`file_size` and the computed data-section start are retained (`parser.py`), and
+metadata key order plus duplicate counts are preserved. `TensorInfo.offset` is
+consumed by the STR003/STR004 bounds and overlap checks.
 
 - **ggml_nbytes ne-product overflow** — recompute `product(dims)*type_size/
   blck_size` in **bignum** to see the C 64-bit wrap (CVE-2026-33298 /
@@ -153,7 +154,7 @@ data-section start; (b) preserve metadata key order + duplicate counts.
 - **Zero / non-block-divisible dims** — `ne[0] % blck_size(type) == 0` (innermost
   dim) using exact per-type table (1 / 32 / 256). **DET**.
 - **Duplicate / confusable metadata keys** — parser-differential (scanner reads
-  first copy, loader reads last). **DET (FAIL once dup-preservation lands)**.
+  first copy, loader reads last). **DET (FAIL)** — MET016.
 - **Template-like content under non-chat_template keys** — route metadata strings
   with Jinja delimiters through the AST rules. **HEUR**.
 - **Unknown ggml_type / value_type id** — flag + treat size as unknown.
@@ -174,3 +175,37 @@ structure to a clean model). Only in-scope angle: opt-in per-tensor **streamed
 SHA-256 manifest** detecting THAT weights changed vs a trusted reference, never
 WHAT — requires a sanctioned opt-in exception to "never read weight bytes" + a new
 GGML block-size table (neither exists today).
+
+---
+
+## 7. `trust_remote_code` Python selected by `auto_map`
+
+Repo configurations can select custom Python through `auto_map`. That code runs
+when a loader honors `trust_remote_code`; it is not part of the GGUF header and
+is audited only in the opt-in bundle path. Pickle and serialized-format
+scanners inspect the serialized artifact rather than this repository `.py`
+surface.
+
+- **Unreadable audit surface** — oversized, reader-truncated, or syntax/resource
+  failures are reported as `RMT000`, never treated as a clean audit. **DET
+  (WARN)**.
+- **Import-time execution sink** — bare unshadowed builtins plus fully resolved
+  `os`, `pty`, and `subprocess` execution calls in module/class bodies,
+  decorators, and default arguments. **DET shape; HEUR intent (WARN)**.
+- **Import-time capability sink** — native library loading, environment probes,
+  sockets, and dynamic imports. These are common in legitimate custom-kernel
+  repositories, so they remain review prompts. **DET shape; HEUR intent
+  (WARN)**.
+- **Decode-then-execute composition** — base/hex decoder output reaches an
+  execution sink in the same import-time expression. **DET shape; HEUR intent
+  (WARN)**.
+- **Cross-repository `auto_map`** — recorded as an INFO boundary and never
+  fetched. **DET**.
+
+The scanner uses `ast.parse` only. It never imports, compiles, executes, or
+evaluates audited source and never writes `__pycache__`. Resolution is bounded
+to the primary `auto_map` file plus one hop of relative imports — with bindings
+carried across that hop, so a sink split across two files is still attributed, and a
+name that cannot be resolved leaves the caller `partial` instead of `examined` — with a
+32-file/1 MiB-per-file budget and explicit coverage rows for absent, skipped,
+truncated, and unparseable surfaces. No RMT rule is FAIL-calibrated in v0.3.

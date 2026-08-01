@@ -1,9 +1,9 @@
 """Command-line interface: ``scan``, ``diff``, ``hash``, ``rules``.
 
 Exit codes (spec §6):
-  0  no findings at/above the fail threshold
+  0  no unsuppressed findings at/above the threshold, or --fail-on none
   1  WARN-level findings present (only when --fail-on warn)
-  2  FAIL-level findings present
+  2  FAIL-level findings present; argparse also uses 2 for invalid syntax
   >2 tool error (bad file, parse failure)
 
 For ``diff``: 0 = structurally identical, 1 = differences found, >2 = error.
@@ -17,8 +17,9 @@ import os
 import sys
 
 from . import __version__
+from .coverage import Surface, build_scan_coverage
 from .integrity import (
-    build_manifest,
+    write_manifest,
     compare_manifest,
     diff_is_empty,
     diff_models,
@@ -26,6 +27,11 @@ from .integrity import (
     sha256_file,
 )
 from .parser import GGUFParseError, parse_gguf
+from .policy import PolicyError, apply_report_policy, load_baseline, load_policy
+# RemoteError only; remote.py imports requests lazily, so the offline core stays
+# free of a network dependency (pinned by tests/test_remote.py).
+from .remote import RemoteError
+from .provenance import rules_bundle_sha256
 from .report import (
     FAIL,
     WARN,
@@ -38,6 +44,7 @@ from .rules.registry import all_rules
 from .rules.structure import analyze_structure
 from .rules.template import analyze_templates
 from .rules.tokenizer import analyze_tokenizer
+from .sarif import render_sarif
 
 EXIT_OK = 0
 EXIT_WARN = 1
@@ -66,7 +73,13 @@ def main(argv: list[str] | None = None) -> int:
         return EXIT_OK
     try:
         return args.func(args)
-    except (GGUFParseError, OSError, json.JSONDecodeError) as exc:
+    except (
+        GGUFParseError, OSError, json.JSONDecodeError, PolicyError, RemoteError,
+        # Backstop for any recursive walker over attacker-shaped input without its own
+        # depth budget. Escaping instead gives CPython's exit 1, which this tool's table
+        # defines as "WARN findings present" -- a crash would read as a passing scan.
+        RecursionError,
+    ) as exc:
         print(f"c4nary: error: {exc}", file=sys.stderr)
         return EXIT_ERROR
 
@@ -90,7 +103,9 @@ def _build_parser() -> argparse.ArgumentParser:
     sp = sub.add_parser("scan", help="audit a GGUF file's template + metadata")
     sp.add_argument("file", help="path to a .gguf file, or (with --remote) a "
                                  "Hugging Face repo id or URL")
-    sp.add_argument("--json", action="store_true", help="emit deterministic JSON")
+    output = sp.add_mutually_exclusive_group()
+    output.add_argument("--json", action="store_true", help="emit deterministic JSON")
+    output.add_argument("--sarif", action="store_true", help="emit deterministic SARIF 2.1.0")
     sp.add_argument("--manifest", metavar="M.JSON",
                     help="compare against a known-good manifest (local scans only)")
     sp.add_argument("--remote", action="store_true",
@@ -98,15 +113,22 @@ def _build_parser() -> argparse.ArgumentParser:
                          "downloading its weights (Hugging Face repo id or URL)")
     sp.add_argument("--file", dest="hf_filename", metavar="NAME.gguf",
                     help="with --remote, the specific .gguf filename to fetch")
-    sp.add_argument("--fail-on", choices=("warn", "fail"), default="fail",
-                    help="exit non-zero threshold (default: fail)")
+    sp.add_argument("--fail-on", choices=("warn", "fail", "none"), default=None,
+                    help="exit non-zero threshold (default: policy, then fail)")
+    sp.add_argument("--policy", metavar="POLICY.JSON",
+                    help="apply per-rule severity overrides and a fail threshold")
+    sp.add_argument("--baseline", metavar="BASELINE.JSON",
+                    help="suppress matching finding fingerprints with required justifications")
     sp.add_argument("--deep-tokenizer", action="store_true",
                     help="materialize the full tokenizer vocab and run the seam / "
-                         "reachability checks (TOK010+); off by default")
+                         "reachability checks (TOK012/TOK015); off by default")
     sp.add_argument("--bundle", action="store_true",
-                    help="also audit the repo bundle (generation_config.json / "
-                         "config.json) for decode-time levers (CFG*); opt-in, "
-                         "materializes the vocab")
+                    help="also audit the repo bundle -- decode-time levers (CFG*), "
+                         "tokenizer.json (NRM*), model card (DOC*), a divergent repo "
+                         "template (TPL030), and any auto_map custom Python, which is "
+                         "parsed with ast only and never imported or executed (RMT*). "
+                         "Opt-in; materializes the vocab. Reads files beside the .gguf "
+                         "locally, and fetches them only with --remote")
     sp.set_defaults(func=_cmd_scan)
 
     dp = sub.add_parser("diff", help="structural diff of two GGUF files")
@@ -132,18 +154,36 @@ def _build_parser() -> argparse.ArgumentParser:
 _DEEP_TOK_KEYS = frozenset({"tokenizer.ggml.tokens", "tokenizer.ggml.token_type"})
 
 
-def _scan_bundle(args, model) -> list:
+def _scan_bundle(args, model) -> tuple[list, list[Surface]]:
     """Opt-in repo-bundle audit -- fetch (remote) or read (local sibling) the repo's config /
     tokenizer.json / special-token / card / divergent-template surfaces and route them through
     the CFG / NRM / DOC / TPL030 rules. Shared with the MCP scan tool (bundle.bundle_findings)."""
-    def _read(name: str, max_bytes: int = 1 << 20) -> str | None:
+    from .bundle import ReadResult, _safe_bundle_name
+
+    def _read(
+        name: str,
+        max_bytes: int = 1 << 20,
+        *,
+        python_only: bool = False,
+    ) -> ReadResult | None:
+        if python_only:
+            name = _safe_bundle_name(name)
         if args.remote:
             from .remote import fetch_repo_text
-            return fetch_repo_text(args.file, name, max_bytes=max_bytes)
+            return fetch_repo_text(
+                args.file,
+                name,
+                max_bytes=max_bytes,
+                python_only=python_only,
+            )
         path = os.path.join(os.path.dirname(os.path.abspath(args.file)), name)
         if os.path.isfile(path):
-            with open(path, encoding="utf-8", errors="replace") as fh:
-                return fh.read(max_bytes)
+            with open(path, "rb") as fh:
+                data = fh.read(max_bytes + 1)
+            return ReadResult(
+                data[:max_bytes].decode("utf-8", errors="replace"),
+                truncated=len(data) > max_bytes,
+            )
         return None
 
     from .bundle import bundle_findings
@@ -153,6 +193,8 @@ def _scan_bundle(args, model) -> list:
 def _cmd_scan(args) -> int:
     deep = getattr(args, "deep_tokenizer", False)
     bundle = getattr(args, "bundle", False)
+    policy = load_policy(getattr(args, "policy", None))
+    baseline = load_baseline(getattr(args, "baseline", None))
     materialize = _DEEP_TOK_KEYS if (deep or bundle) else None
     if args.remote:
         from .remote import RemoteError, fetch_remote_model
@@ -163,58 +205,74 @@ def _cmd_scan(args) -> int:
             print(f"c4nary: error: {exc}", file=sys.stderr)
             return EXIT_ERROR
         file_sha = None
-        findings = (analyze_templates(model)
-                    + analyze_metadata(model)
-                    + analyze_tokenizer(model, deep=deep))
-        # The header is truncated, so the file is the wrong size: structural and
-        # whole-file integrity checks cannot run on a remote scan.
-        print("note: remote header scan - structural (STR*) and whole-file "
-              "integrity checks need the complete file and were skipped.",
-              file=sys.stderr)
-        if args.manifest:
-            print("note: --manifest ignored for remote scans (needs the full file).",
-                  file=sys.stderr)
+        template_findings = analyze_templates(model)
+        findings = (
+            template_findings
+            + analyze_metadata(model)
+            + analyze_tokenizer(model, deep=deep)
+        )
     else:
         model = parse_gguf(args.file, materialize=materialize)
         display = model.path
         file_sha = sha256_file(args.file)
-        findings = (analyze_templates(model)
-                    + analyze_metadata(model)
-                    + analyze_tokenizer(model, deep=deep)
-                    + analyze_structure(model))
+        template_findings = analyze_templates(model)
+        findings = (
+            template_findings
+            + analyze_metadata(model)
+            + analyze_tokenizer(model, deep=deep)
+            + analyze_structure(model)
+        )
         if args.manifest:
             with open(args.manifest, encoding="utf-8") as fh:
                 manifest = json.load(fh)
             findings += compare_manifest(model, file_sha, manifest)
 
-    # State whether the deep tokenizer pass ran, so a clean verdict never silently
-    # means "didn't look" (mirrors the STR* skipped note).
-    if deep:
-        print("note: deep tokenizer pass ran - full vocab materialized; "
-              "seam checks (TOK010+) active.", file=sys.stderr)
-    else:
-        print("note: deep tokenizer seam checks (TOK010+) not run; pass "
-              "--deep-tokenizer to enable.", file=sys.stderr)
-
+    bundle_surfaces: list[Surface] = []
     if bundle:
-        findings += _scan_bundle(args, model)
-        print("note: bundle scan ran - generation_config / config levers (CFG*) + model "
-              "card README (DOC*) audited.", file=sys.stderr)
+        bundle_results, bundle_surfaces = _scan_bundle(args, model)
+        findings += bundle_results
+
+    registered = [finding.severity for finding in findings]
+    findings = apply_report_policy(findings, policy, baseline)
+    suppressed_count = sum(finding.suppressed for finding in findings)
+    retiered_count = sum(
+        before != after.severity for before, after in zip(registered, findings)
+    )
+    coverage = build_scan_coverage(
+        model,
+        remote=args.remote,
+        deep_tokenizer=deep,
+        bundle=bundle,
+        manifest_requested=bool(args.manifest),
+        baseline_requested=getattr(args, "baseline", None) is not None,
+        suppressed_count=suppressed_count,
+        policy_requested=getattr(args, "policy", None) is not None,
+        retiered_count=retiered_count,
+        template_findings=template_findings,
+        bundle_surfaces=bundle_surfaces,
+    )
+    for note in coverage.notes():
+        print(f"note: {note}", file=sys.stderr)
 
     template_sha = model_template_sha256(model)
-    if args.json:
+    if getattr(args, "sarif", False):
+        print(render_sarif(file=display, sha256=file_sha, findings=findings))
+    elif args.json:
         print(render_json(
             file=display, sha256=file_sha,
-            template_sha256=template_sha, findings=findings))
+            template_sha256=template_sha, findings=findings, coverage=coverage))
     else:
         print(render_human(
             file=display, sha256=file_sha,
             template_sha256=template_sha, findings=findings))
 
     counts = summarize(findings)
+    fail_on = getattr(args, "fail_on", None) or policy.fail_on
+    if fail_on == "none":
+        return EXIT_OK
     if counts[FAIL]:
         return EXIT_FAIL
-    if args.fail_on == "warn" and counts[WARN]:
+    if fail_on == "warn" and counts[WARN]:
         return EXIT_WARN
     return EXIT_OK
 
@@ -238,9 +296,7 @@ def _cmd_hash(args) -> int:
     template_sha = model_template_sha256(model)
 
     if args.manifest:
-        manifest = build_manifest(model, file_sha)
-        with open(args.manifest, "w", encoding="utf-8") as fh:
-            fh.write(json.dumps(manifest, indent=2, ensure_ascii=True))
+        write_manifest(model, file_sha, args.manifest, args.file)
         print(f"wrote manifest: {args.manifest}", file=sys.stderr)
 
     if args.json:
@@ -257,10 +313,19 @@ def _cmd_hash(args) -> int:
 def _cmd_rules(args) -> int:
     rules = all_rules()
     if args.json:
-        print(json.dumps(
-            [{"rule_id": r.rule_id, "severity": r.severity,
-              "title": r.title, "description": r.description} for r in rules],
-            indent=2, ensure_ascii=True))
+        print(json.dumps({
+            "tool_version": __version__,
+            "rules_bundle_sha256": rules_bundle_sha256(),
+            "rules": [
+                {
+                    "rule_id": rule.rule_id,
+                    "severity": rule.severity,
+                    "title": rule.title,
+                    "description": rule.description,
+                }
+                for rule in rules
+            ],
+        }, indent=2, ensure_ascii=True))
     else:
         for r in rules:
             print(f"{r.rule_id}  {r.severity:4}  {r.title}")
@@ -352,8 +417,19 @@ def _ask(label: str) -> str | None:
 
 
 def _scan_args(target: str, *, remote: bool, filename: str | None = None):
-    return argparse.Namespace(file=target, json=False, manifest=None,
-                              remote=remote, hf_filename=filename, fail_on="fail")
+    return argparse.Namespace(
+        file=target,
+        json=False,
+        sarif=False,
+        manifest=None,
+        remote=remote,
+        hf_filename=filename,
+        fail_on=None,
+        policy=None,
+        baseline=None,
+        deep_tokenizer=False,
+        bundle=False,
+    )
 
 
 def _i_scan_local() -> None:

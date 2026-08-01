@@ -10,6 +10,7 @@ vocab + the declared stop set -- no weights, no execution. Opt-in bundle scan on
 from __future__ import annotations
 
 import re
+from collections.abc import Iterable
 from typing import TYPE_CHECKING
 
 from ..parser import MetaArray
@@ -95,7 +96,40 @@ def _stop_ids(model: GGUFModel, cfg: dict) -> set[int]:
     return ids
 
 
-def analyze_config(model: GGUFModel, cfg: dict) -> list[Finding]:
+def analyze_auto_map(configs: Iterable[tuple[str, dict]]) -> list[Finding]:
+    declarations: list[tuple[str, dict]] = []
+    for source, config in configs:
+        auto_map = config.get("auto_map")
+        if isinstance(auto_map, dict) and auto_map:
+            declarations.append((source, auto_map))
+    if not declarations:
+        return []
+
+    sources = [source for source, _auto_map in declarations]
+    keys = sorted({
+        key
+        for _source, auto_map in declarations
+        for key in auto_map
+        if isinstance(key, str)
+    })
+    primary = sources[0]
+    return [finding(
+        "CFG004",
+        f"{', '.join(sources)} declare auto_map with {len(keys)} distinct entries "
+        f"({', '.join(keys[:4])}): transformers may load custom Python code from the "
+        f"repo with trust_remote_code=True. Manual review recommended.",
+        location=f"{primary}:auto_map",
+        artifact=primary,
+    )]
+
+
+def analyze_config(
+    model: GGUFModel,
+    cfg: dict,
+    *,
+    include_auto_map: bool = True,
+    source: str = "config.json",
+) -> list[Finding]:
     """Audit a parsed generation_config.json / config.json dict against the model."""
     if not isinstance(cfg, dict):
         return []
@@ -124,18 +158,13 @@ def analyze_config(model: GGUFModel, cfg: dict) -> list[Finding]:
                 location=k))
         for f in analyze_embedded_template(v):
             findings.append(dataclasses.replace(
-                f, location=f"{k}:{f.location}" if f.location else k))
+                f,
+                location=f"{k}:{f.location}" if f.location else k,
+                artifact=k,
+            ))
 
-    # CFG004 -- auto_map enables trust_remote_code loading of custom modeling code.
-    auto_map = cfg.get("auto_map")
-    if isinstance(auto_map, dict) and auto_map:
-        findings.append(finding(
-            "CFG004",
-            f"config declares auto_map with {len(auto_map)} entries "
-            f"({', '.join(sorted(auto_map)[:4])}): transformers will load custom Python "
-            f"modeling code from the repo (trust_remote_code=True). A backdoored modeling "
-            f"file executes arbitrary code on load. Manual review recommended.",
-            location="config.auto_map"))
+    if include_auto_map:
+        findings.extend(analyze_auto_map(((source, cfg),)))
 
     # always-suppressed = suppress_tokens (every step) + single-token bad_words. NB:
     # begin_suppress_tokens is EXCLUDED -- suppressing eos only at the first step is a

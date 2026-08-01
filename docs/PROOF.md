@@ -52,8 +52,9 @@ The machine-readable v0.2.2 gate summary for **192,032 repository records** is
 It separates actual templates analyzed from parsed no-template repositories and
 explicit exclusions. Historical v2 findings remain in
 [corpus-v2-findings.json](corpus-v2-findings.json).
-The red-team evasion corpus is in `tools/evasions.json`; the regression harness is
-the test suite itself. Clone and run it:
+The red team generated 49 evasion payloads; the 19 retained as regressions are in
+`tools/evasions.json`. The regression harness is the test suite itself. Clone and
+run it:
 
 ```sh
 git clone https://github.com/paraxaQQ/canary && cd canary
@@ -62,8 +63,10 @@ pip install ".[dev]" && python -m pytest -q
 
 ## Why this is the receipt
 
-Deterministic (same input → byte-identical output), offline at the core (only
-`--remote` touches the network, and only to fetch a header — never weights, never
-execution), and every finding maps to a stable rule id you can look up with
+Deterministic (for a fixed `(Python, Jinja2)` pair, same input → byte-identical
+output), offline at the core (only the opt-in fetcher touches the network — a
+header by default, and with `--bundle` the repo's config/tokenizer/card files plus
+any `auto_map` Python, which is parsed and never executed; never weights), and
+every finding maps to a stable rule id you can look up with
 `canary rules`. Nothing here asks you to trust the author. It asks you to run three
 commands.

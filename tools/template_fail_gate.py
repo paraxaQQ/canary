@@ -26,7 +26,9 @@ from c4nary.report import FAIL
 from c4nary.rules.registry import all_rules
 from c4nary.rules.template import analyze_template
 from tools.release_gate_scan import (
+    CORPUS_FAIL_EXCLUSIONS,
     RequestRateLimiter,
+    assert_fail_gate_scope,
     atomic_json,
     auth_headers,
     logger,
@@ -312,6 +314,11 @@ def parse_stages(value: str) -> tuple[int, ...]:
 
 
 def main() -> int:
+    assert_fail_gate_scope(
+        TEMPLATE_FAIL_RULES,
+        CORPUS_FAIL_EXCLUSIONS,
+        gate="template FAIL gate",
+    )
     parser = argparse.ArgumentParser()
     parser.add_argument("--inventory", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)

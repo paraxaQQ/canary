@@ -26,8 +26,10 @@ constructs.*
   identify the behavior.
 - The other 137,670 analyzed repository templates produced no FAIL. Getting that number honest took finding
   and fixing every false-positive class against real models — including two
-  surfaced only at full-catalog scale (an RTL-localized identity prompt, a
-  tool-argument type-check), fixed before the v2 release.
+  surfaced only at full-catalog scale (a default identity prompt emitted under an
+  emptiness gate, a tool-argument type-check) plus one latent RTL-direction-mark
+  class fixed pre-emptively, all before the v2 release. See
+  [VALIDATION.md](VALIDATION.md) for the models each was diagnosed against.
 
 ## Method
 
@@ -133,7 +135,8 @@ function-calling and agentic templates and becomes noise.
 
 We red-teamed c4nary against itself: independent agents generated 49 evasion
 payloads aimed squarely at its rules. The result hardened the detector and mapped
-its limits.
+its limits. The 19 that remain useful as regressions ship in `tools/evasions.json`;
+the rest were duplicates or variants the same fix already covered.
 
 **Closed by hardening** (all now caught): computed/non-constant subscript keys
 (`''['__%s__' % 'class']`), string-method reconstruction (`.format()`, `.replace`,

@@ -152,7 +152,8 @@ def analyze_tokenizer(model: GGUFModel, deep: bool = False) -> list[Finding]:
                     "TOK002",
                     f"token count {vocab} exceeds every axis of {tname} {t.shape}; "
                     f"tokens would index outside the embedding table.",
-                    location="tokenizer.ggml.tokens"))
+                    location="tokenizer.ggml.tokens",
+                    subject=f"tensor:{tname}"))
 
     # TOK003 - parallel arrays length + token_type enum.
     if vocab is not None:
@@ -163,7 +164,8 @@ def analyze_tokenizer(model: GGUFModel, deep: bool = False) -> list[Finding]:
                     "TOK003",
                     f"tokenizer.ggml.{key} has {arr.length} entries but there are "
                     f"{vocab} tokens.",
-                    location=f"tokenizer.ggml.{key}"))
+                    location=f"tokenizer.ggml.{key}",
+                    subject=f"length:{key}"))
     ttype = meta.get("tokenizer.ggml.token_type")
     if isinstance(ttype, MetaArray):
         bad = sorted({v for v in ttype.preview
@@ -172,7 +174,8 @@ def analyze_tokenizer(model: GGUFModel, deep: bool = False) -> list[Finding]:
             findings.append(finding(
                 "TOK003",
                 f"token_type contains values outside the enum 1..6: {bad[:8]}.",
-                location="tokenizer.ggml.token_type"))
+                location="tokenizer.ggml.token_type",
+                subject="token_type_enum"))
 
     # TOK004 - implausibly large vocabulary token.
     tokens = meta.get("tokenizer.ggml.tokens")
