@@ -150,3 +150,31 @@ def test_parse_error_exit_code(tmp_path, capsys):
     rc = cli.main(["scan", str(bad)])
     capsys.readouterr()
     assert rc == 3
+
+
+def test_scan_json_carries_the_provenance_pair(tmp_path):
+    """The ruleset digest says which rules ran; tool_version says which build ran them.
+
+    README documents both as part of the --json envelope, and the MCP scan tool has
+    always returned both -- the CLI was the odd one out.
+    """
+
+    import json as _json
+
+    from c4nary import __version__, cli
+
+    model = write_gguf(tmp_path / "m.gguf", {
+        "general.architecture": "llama",
+        "tokenizer.chat_template": "{{ messages[0]['content'] }}",
+    }, tensors=[("a", (2, 2), 0)], tail=b"data")
+
+    import contextlib
+    import io
+
+    out = io.StringIO()
+    with contextlib.redirect_stdout(out):
+        cli.main(["scan", str(model), "--json"])
+    payload = _json.loads(out.getvalue())
+
+    assert payload["tool_version"] == __version__
+    assert len(payload["rules_bundle_sha256"]) == 64

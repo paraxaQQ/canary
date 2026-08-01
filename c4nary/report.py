@@ -161,6 +161,7 @@ def render_json(
     findings: list[Finding],
     coverage: "Coverage | None" = None,
 ) -> str:
+    from . import __version__
     from .provenance import rules_bundle_sha256
 
     payload = {
@@ -171,6 +172,9 @@ def render_json(
         "summary": _summary_lower(findings),
         "artifacts": artifact_rows(file=file, sha256=sha256, findings=findings),
         "coverage": coverage.to_dict() if coverage is not None else [],
+        # Paired with the ruleset digest: the digest says which rules ran, this says
+        # which build ran them. The MCP scan tool already returned both.
+        "tool_version": __version__,
         "rules_bundle_sha256": rules_bundle_sha256(),
     }
     # Fixed separators + no sort_keys: field order is the literal order above,
