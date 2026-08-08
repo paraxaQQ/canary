@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+## 0.3.1 — 2026-08-07
+
+### Detection
+- Broaden TPL023 WARN detection from exact imperative phrases to a statically emitted
+  persistent-obligation shape (`target + force + persistence`). The action verb is no
+  longer enumerated, so directives such as `you must always append ...` reach manual
+  review without widening the TPL021 FAIL rule or the model-card/metadata lexicon.
+- Preserve the existing detail text for lexicon-based TPL023 findings so deterministic
+  reports and warning baselines do not churn for templates already detected by 0.3.0.
+
+### Validation
+- Confirm the previously missed `jeikei97/gguf-chat-template-metadata-backdoor` template
+  now produces one TPL023 WARN and no FAIL. On the retained 136,996-template release-gate
+  inventory, TPL023 moved from 115 findings (0.083944%) to 127 (0.092703%), adding six
+  unique templates; all six additions were reviewed.
+
 ## 0.3.0 — 2026-08-01
 
 ### Changed (breaking)

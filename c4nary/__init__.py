@@ -16,6 +16,6 @@ Hard invariants (see the "Hard invariants" section of README.md, the live contra
 It detects *risk indicators*; it does not prove a model is safe or malicious.
 """
 
-__version__ = "0.3.0"
+__version__ = "0.3.1"
 
 __all__ = ["__version__"]

@@ -170,6 +170,16 @@ INSTRUCTION_LEXICON = (
 # 'instead of answering' was removed: it appears in benign helpfulness system
 # prompts ("explain why instead of answering incorrectly"), not just injections.
 
+# TPL023's broad WARN fallback is compositional: it recognizes directive grammar
+# without enumerating the action verb. Keep this separate from INSTRUCTION_LEXICON,
+# which also feeds higher-severity and non-template rules.
+_DIRECTIVE_CLAUSE_BOUNDARY_RE = re.compile(r"[.!?;\r\n]+")
+_DIRECTIVE_TARGET_RE = re.compile(r"\b(?:you|your|assistant|model)\b")
+_DIRECTIVE_FORCE_RE = re.compile(
+    r"\b(?:must|shall|(?:is|are)\s+required\s+to|(?:has|have)\s+to|needs?\s+to)\b")
+_DIRECTIVE_PERSISTENCE_RE = re.compile(
+    r"\b(?:always|never|from\s+now\s+on|regardless)\b")
+
 
 def analyze_template(source: str | None) -> list[Finding]:
     """Return findings for the (optional) chat template. Pure, deterministic."""
@@ -188,6 +198,7 @@ def analyze_template(source: str | None) -> list[Finding]:
         )]
 
     findings: list[Finding] = []
+    directive_shape: tuple[str, str] | None = None
     try:
         ast = parse_template(source)
     except jinja2.TemplateSyntaxError as exc:
@@ -203,6 +214,7 @@ def analyze_template(source: str | None) -> list[Finding]:
         ))
     else:
         try:
+            directive_shape = _static_output_directive_shape(ast)
             findings.extend(_ast_checks(ast))
             findings.extend(_depth_check(ast))
             findings.extend(_behavioral_checks(ast))
@@ -217,7 +229,7 @@ def analyze_template(source: str | None) -> list[Finding]:
                 location="template",
             ))
 
-    findings.extend(_text_checks(source))
+    findings.extend(_text_checks(source, directive_shape))
     return _dedupe(findings)
 
 
@@ -481,6 +493,26 @@ def _lex_text(s: str) -> str:
     return _deconfuse(_fold(s)).lower()
 
 
+def _match_text(pattern: re.Pattern[str], text: str) -> str | None:
+    match = pattern.search(text)
+    return match.group(0) if match is not None else None
+
+
+def _directive_shape(text: str) -> tuple[str, str] | None:
+    """Return the first named behavioral-directive shape in emitted static text."""
+    for clause in _DIRECTIVE_CLAUSE_BOUNDARY_RE.split(_lex_text(text)):
+        target = _match_text(_DIRECTIVE_TARGET_RE, clause)
+        force = _match_text(_DIRECTIVE_FORCE_RE, clause)
+        persistence = _match_text(_DIRECTIVE_PERSISTENCE_RE, clause)
+
+        if target and force and persistence:
+            return (
+                "persistent-obligation",
+                f"target={target!r}, force={force!r}, persistence={persistence!r}",
+            )
+    return None
+
+
 def _is_literal_pivot(node) -> bool:
     """``''[...]`` / ``()[...]`` / ``(0)[...]`` / ``[]``/``{}`` -- subscripting a
     bare literal, the SSTI escape pivot. Non-empty list/dict literals (benign
@@ -570,7 +602,10 @@ def _check_reconstructed(findings: list[Finding], assembled: str | None, loc: st
             return
 
 
-def _text_checks(source: str) -> list[Finding]:
+def _text_checks(
+    source: str,
+    directive_shape: tuple[str, str] | None = None,
+) -> list[Finding]:
     findings: list[Finding] = []
 
     urls = URL_RE.findall(source)
@@ -620,11 +655,13 @@ def _text_checks(source: str) -> list[Finding]:
 
     low = _lex_text(source)  # NFKC + confusables-fold so obfuscated text matches
     hits = [p for p in INSTRUCTION_LEXICON if p in low]
-    if hits:
+    if hits or directive_shape is not None:
+        evidence = (f"e.g. {hits[0]!r}" if hits else
+                    f"structural shape {directive_shape[0]!r} ({directive_shape[1]})")
         findings.append(finding(
             "TPL023",
             f"Template emits imperative instruction-like text not sourced from the "
-            f"conversation (e.g. {hits[0]!r}) - possible hidden instruction injection; "
+            f"conversation ({evidence}) - possible hidden instruction injection; "
             f"manual review, not proof of malice.",
             location="template:text",
         ))
@@ -1212,6 +1249,39 @@ def _body_emits_instruction(body: list[nodes.Node]) -> bool:
                     texts.append(asm)
     joined = _lex_text(" ".join(texts))
     return any(p in joined for p in INSTRUCTION_LEXICON)
+
+
+def _static_output_text(node: nodes.Node) -> str | None:
+    if isinstance(node, nodes.TemplateData):
+        return node.data
+    if isinstance(node, nodes.Const) and isinstance(node.value, str):
+        return node.value
+    if isinstance(node, (nodes.Concat, nodes.Add)):
+        return _reconstruct_concat_deep(node)
+    if isinstance(node, nodes.Filter) and node.name == "join":
+        return _reconstruct_join(node)
+    if isinstance(node, nodes.Filter) and node.name == "replace":
+        return _reconstruct_replace_filter(node)
+    if isinstance(node, nodes.Filter) and node.name == "format":
+        return _reconstruct_format_filter(node)
+    if isinstance(node, nodes.Mod):
+        return _reconstruct_mod(node)
+    if (isinstance(node, nodes.Call) and isinstance(node.node, nodes.Getattr)
+            and node.node.attr in ("replace", "format", "upper", "lower")):
+        return _reconstruct_str_method(node)
+    return None
+
+
+def _static_output_directive_shape(ast: nodes.Template) -> tuple[str, str] | None:
+    """Inspect only statically reconstructable output, not conditions or error strings."""
+    for node in iter_nodes(ast):
+        if not isinstance(node, nodes.Output):
+            continue
+        parts = [text for child in node.nodes
+                 if (text := _static_output_text(child)) is not None]
+        if parts and (shape := _directive_shape(" ".join(parts))) is not None:
+            return shape
+    return None
 
 
 def _body_emits_tainted_var(body: list[nodes.Node],
