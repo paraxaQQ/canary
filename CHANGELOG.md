@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+### Ingest
+- Classify the scan target before any parser sees it, so a GGUF file becomes one ingest
+  among several rather than the entry ticket. `scan` gains `--as {gguf,ollama,repo}` to
+  force a type and `--ollama` to mark the target as an Ollama model reference. An Ollama
+  reference and a Hugging Face repo id share a shape (`a/b`, `a/b:c`), so an Ollama
+  target is never inferred from a bare string -- only declared.
+- The GGUF path is unchanged by construction: GGUF magic is checked before any text
+  heuristic, and an unrecognized target falls through to the GGUF ingest so the parser
+  still raises its own error for a missing or non-model file. `ollama` and `repo` targets
+  report that they are not implemented yet and exit 3.
+
 ### Detection
 - Extend the TPL023 structural shape set with two target-free forms, each requiring
   narrower evidence than the existing `target + force + persistence` shape: a persistent

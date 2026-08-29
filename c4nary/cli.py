@@ -15,9 +15,11 @@ import argparse
 import json
 import os
 import sys
+from dataclasses import dataclass
 
 from . import __version__
-from .coverage import Surface, build_scan_coverage
+from .coverage import Coverage, Surface, build_scan_coverage
+from .ingest import TARGETS, classify_target
 from .integrity import (
     write_manifest,
     compare_manifest,
@@ -35,6 +37,7 @@ from .provenance import rules_bundle_sha256
 from .report import (
     FAIL,
     WARN,
+    Finding,
     render_human,
     render_json,
     summarize,
@@ -129,6 +132,12 @@ def _build_parser() -> argparse.ArgumentParser:
                          "parsed with ast only and never imported or executed (RMT*). "
                          "Opt-in; materializes the vocab. Reads files beside the .gguf "
                          "locally, and fetches them only with --remote")
+    sp.add_argument("--as", dest="as_type", choices=TARGETS, default=None,
+                    help="force the target type instead of detecting it from the "
+                         "target itself")
+    sp.add_argument("--ollama", action="store_true",
+                    help="the target is an Ollama model reference (e.g. "
+                         "library/qwen3:0.6b), not a file path")
     sp.set_defaults(func=_cmd_scan)
 
     dp = sub.add_parser("diff", help="structural diff of two GGUF files")
@@ -190,20 +199,28 @@ def _scan_bundle(args, model) -> tuple[list, list[Surface]]:
     return bundle_findings(model, _read)
 
 
-def _cmd_scan(args) -> int:
+@dataclass(frozen=True)
+class _ScanResult:
+    findings: list[Finding]
+    coverage: Coverage
+    display: str
+    file_sha: str | None
+    template_sha: str | None
+
+
+def _scan_gguf(args, policy, baseline) -> _ScanResult:
+    """The GGUF ingest: parse (or range-fetch) a .gguf and run every GGUF rule family.
+
+    RemoteError propagates to ``main``, which prints it in the same form the inline
+    handler used to.
+    """
     deep = getattr(args, "deep_tokenizer", False)
     bundle = getattr(args, "bundle", False)
-    policy = load_policy(getattr(args, "policy", None))
-    baseline = load_baseline(getattr(args, "baseline", None))
     materialize = _DEEP_TOK_KEYS if (deep or bundle) else None
     if args.remote:
-        from .remote import RemoteError, fetch_remote_model
-        try:
-            model, display = fetch_remote_model(
-                args.file, args.hf_filename, materialize=materialize)
-        except RemoteError as exc:
-            print(f"c4nary: error: {exc}", file=sys.stderr)
-            return EXIT_ERROR
+        from .remote import fetch_remote_model
+        model, display = fetch_remote_model(
+            args.file, args.hf_filename, materialize=materialize)
         file_sha = None
         template_findings = analyze_templates(model)
         findings = (
@@ -251,20 +268,42 @@ def _cmd_scan(args) -> int:
         template_findings=template_findings,
         bundle_surfaces=bundle_surfaces,
     )
+    return _ScanResult(findings, coverage, display, file_sha,
+                       model_template_sha256(model))
+
+
+def _cmd_scan(args) -> int:
+    policy = load_policy(getattr(args, "policy", None))
+    baseline = load_baseline(getattr(args, "baseline", None))
+
+    target = classify_target(
+        args.file,
+        remote=args.remote,
+        ollama=getattr(args, "ollama", False),
+        override=getattr(args, "as_type", None),
+    )
+    if target != "gguf":
+        print(f"c4nary: error: {target} targets are not implemented in c4nary "
+              f"{__version__}; GGUF scanning is unchanged.", file=sys.stderr)
+        return EXIT_ERROR
+
+    result = _scan_gguf(args, policy, baseline)
+    findings, coverage = result.findings, result.coverage
     for note in coverage.notes():
         print(f"note: {note}", file=sys.stderr)
 
-    template_sha = model_template_sha256(model)
     if getattr(args, "sarif", False):
-        print(render_sarif(file=display, sha256=file_sha, findings=findings))
+        print(render_sarif(file=result.display, sha256=result.file_sha,
+                           findings=findings))
     elif args.json:
         print(render_json(
-            file=display, sha256=file_sha,
-            template_sha256=template_sha, findings=findings, coverage=coverage))
+            file=result.display, sha256=result.file_sha,
+            template_sha256=result.template_sha, findings=findings,
+            coverage=coverage))
     else:
         print(render_human(
-            file=display, sha256=file_sha,
-            template_sha256=template_sha, findings=findings))
+            file=result.display, sha256=result.file_sha,
+            template_sha256=result.template_sha, findings=findings))
 
     counts = summarize(findings)
     fail_on = getattr(args, "fail_on", None) or policy.fail_on

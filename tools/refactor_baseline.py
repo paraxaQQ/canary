@@ -180,13 +180,19 @@ def run(argv: list[str]) -> str:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--out", default="outputs/baseline",
-                    help="output directory; use the same value before and after")
+                    help="where the captured cases are written")
+    # Fixture paths are echoed into every report, so they must NOT vary with --out
+    # or the before/after diff is nothing but path noise.
+    ap.add_argument("--fixtures", default="outputs/baseline-fixtures",
+                    help="fixture directory; keep identical across runs")
     args = ap.parse_args()
 
     out = Path(args.out)
     if out.exists():
         shutil.rmtree(out)
-    fx = out / "fixtures"
+    fx = Path(args.fixtures)
+    if fx.exists():
+        shutil.rmtree(fx)
     build_fixtures(fx)
 
     cases_dir = out / "cases"
