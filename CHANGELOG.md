@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+### Detection
+- Extend the TPL023 structural shape set with two target-free forms, each requiring
+  narrower evidence than the existing `target + force + persistence` shape: a persistent
+  clause scoping a sensitive action (`leak`, `exfiltrate`, `steal`, `disclose`, `expose`,
+  `transmit`) to the response, and a persistent clause emitting an opaque `[[marker]]`
+  into the response. A conditional instruction carried by a non-default named template --
+  `tokenizer.chat_template.tool_use` -- now reaches manual review without widening the
+  TPL021 FAIL rule. The shapes feed TPL023 only; the model-card (DOC) and metadata (MET)
+  lexicons are unchanged, and the existing shape is still matched first so findings
+  already detected by 0.3.1 keep their detail text.
+
+### Validation
+- On the retained 136,996-template release-gate inventory, TPL023 is unchanged at 127
+  records across 52 unique templates -- the new shapes add no corpus findings. The
+  conditional artifact reports one TPL023 WARN tagged `chat_template[tool_use]` and no
+  FAIL, and the benign control `If tools are available, always use the required JSON
+  schema for every response.` stays clean.
+
 ## 0.3.1 — 2026-08-07
 
 ### Detection

@@ -170,15 +170,23 @@ INSTRUCTION_LEXICON = (
 # 'instead of answering' was removed: it appears in benign helpfulness system
 # prompts ("explain why instead of answering incorrectly"), not just injections.
 
-# TPL023's broad WARN fallback is compositional: it recognizes directive grammar
-# without enumerating the action verb. Keep this separate from INSTRUCTION_LEXICON,
-# which also feeds higher-severity and non-template rules.
+# TPL023's core WARN fallback is compositional: it recognizes a targeted obligation
+# without enumerating the action verb. Target-free persistent clauses need narrower
+# action/marker evidence so ordinary response-format instructions stay clean. Keep these
+# shapes separate from INSTRUCTION_LEXICON, which also feeds non-template rules.
 _DIRECTIVE_CLAUSE_BOUNDARY_RE = re.compile(r"[.!?;\r\n]+")
 _DIRECTIVE_TARGET_RE = re.compile(r"\b(?:you|your|assistant|model)\b")
 _DIRECTIVE_FORCE_RE = re.compile(
     r"\b(?:must|shall|(?:is|are)\s+required\s+to|(?:has|have)\s+to|needs?\s+to)\b")
 _DIRECTIVE_PERSISTENCE_RE = re.compile(
     r"\b(?:always|never|from\s+now\s+on|regardless)\b")
+_DIRECTIVE_RESPONSE_SCOPE_RE = re.compile(
+    r"\b(?:answer|reply|response|output|message)s?\b")
+_DIRECTIVE_SENSITIVE_ACTION_RE = re.compile(
+    r"\b(?:leak(?:s|ed|ing)?|exfiltrat(?:e|es|ed|ing|ion)|"
+    r"steal(?:s|ing)?|stole|stolen|disclos(?:e|es|ed|ing|ure)|"
+    r"expos(?:e|es|ed|ing|ure)|transmit(?:s|ted|ting)?)\b")
+_DIRECTIVE_MARKER_RE = re.compile(r"\[\[[a-z][a-z0-9_]{2,}\]\]")
 
 
 def analyze_template(source: str | None) -> list[Finding]:
@@ -504,11 +512,26 @@ def _directive_shape(text: str) -> tuple[str, str] | None:
         target = _match_text(_DIRECTIVE_TARGET_RE, clause)
         force = _match_text(_DIRECTIVE_FORCE_RE, clause)
         persistence = _match_text(_DIRECTIVE_PERSISTENCE_RE, clause)
+        response_scope = _match_text(_DIRECTIVE_RESPONSE_SCOPE_RE, clause)
+        sensitive_action = _match_text(_DIRECTIVE_SENSITIVE_ACTION_RE, clause)
+        marker = _match_text(_DIRECTIVE_MARKER_RE, clause)
 
         if target and force and persistence:
             return (
                 "persistent-obligation",
                 f"target={target!r}, force={force!r}, persistence={persistence!r}",
+            )
+        if persistence and response_scope and sensitive_action:
+            return (
+                "persistent-sensitive-action",
+                f"persistence={persistence!r}, action={sensitive_action!r}, "
+                f"scope={response_scope!r}",
+            )
+        if persistence and response_scope and marker:
+            return (
+                "persistent-marker-output",
+                f"persistence={persistence!r}, marker={marker!r}, "
+                f"scope={response_scope!r}",
             )
     return None
 
