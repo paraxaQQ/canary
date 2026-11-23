@@ -4,6 +4,23 @@
 
 # c4nary
 
+
+
+A copy of this repository at github.com/ushi7445/canary (and its linked page ushi7445.github.io) is malware. It reuses this project's code, history, and validation numbers to look legitimate, but:
+
+	•	tells users to download a canary.exe from an external site
+	•	instructs users to click "More info → Run anyway" to bypass Windows Defender
+	•	adds tests/fixtures/Software-2.0.zip, which contains a Lua-based loader (Application.cmd → luau.exe running an obfuscated script disguised as msgpack.txt)
+
+SHA-256 of the malicious zip:
+
+ad9457bde9da015e1fe64f7710e961f0ff2ee28db31f0bf5cc817a257ec91056
+
+If you downloaded or ran anything from that repo or site: disconnect from the network, run a full antivirus scan, and change passwords for any accounts used on that machine from a separate, clean device.
+
+Spotted another copy? Please open an issue here and report it to GitHub via Report repository.
+
+
 > **Codename `c4nary`. Command: `canary`.**
 > A deterministic, read-only static auditor for **GGUF** model files. It inspects
 > chat templates, tokenizer metadata, model cards, bundled configuration, the
