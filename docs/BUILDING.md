@@ -1,4 +1,4 @@
-# Branches, builds, and releases
+# Branches and releases
 
 `main` is the release branch. `building` is the nightly/integration branch.
 Feature work, fixes, and refactors land on `building`; `main` only receives
@@ -16,64 +16,38 @@ release updates and official tags.
   `v1.0.0`.
 - `main` never inherits `building`'s version number.
 
-A `building` tag points at the `building` commit that produced the artifact.
-The standalone executable is attached to that tag's GitHub prerelease; it is
-never committed to the repository.
+## Nightly artifacts: the standard wheel/sdist path
 
-## The building artifact
+Nightly builds use the same packaging path as a release. **No standalone
+executable is produced.** The artifact is the normal wheel and source
+distribution built from the `building` commit.
 
-The artifact is a single-file, console-mode Windows executable named
-`canary-building.exe`. It bundles:
-
-- the c4nary scanner and its Jinja2 dependency;
-- `c4nary/known_templates/*.jinja` package data (the rules provenance digest
-  covers these files);
-- `requests` for `scan --remote` (imported lazily by `c4nary.remote`, so it is an
-  explicit hidden import);
-- no MCP extra, no test dependencies.
-
-Build requirements are pinned in `requirements-build.txt`. Install them into the
-repository venv (which lives on `Z:`; nothing is installed system-wide or on
-`C:`):
+Build into a separate directory so nightly artifacts never mix with the
+release `dist/` tree:
 
 ```powershell
-.\.venv\Scripts\python.exe -m pip install -r requirements-build.txt
+.\.venv\Scripts\python.exe -m pytest -q
+.\.venv\Scripts\python.exe -m build --outdir outputs\building-dist --no-isolation
+.\.venv\Scripts\python.exe -m twine check outputs\building-dist\*
 ```
 
-Build:
-
-```powershell
-.\.venv\Scripts\python.exe tools\build_exe.py
-```
-
-This writes `outputs/building/canary-building.exe` and prints its SHA-256. The
-PyInstaller cache, work tree, spec file, and temp directory are all forced under
-`outputs/building/`, and the build uses the venv interpreter. `outputs/` and
-`build/` are gitignored, so the artifact stays out of the tree.
+The nightly wheel carries the same package version as the current base
+(`0.3.1`); it is identified by its commit and tag, not its filename. **Do not
+upload a nightly build to PyPI.**
 
 ## Verification
 
-Run the smoke suite against the built executable:
+Follow the installed-artifact checks in `RELEASE.md`, using a throwaway venv on
+`Z:`:
 
-```powershell
-.\.venv\Scripts\python.exe tools\verify_exe.py
-.\.venv\Scripts\python.exe tools\verify_exe.py --remote unsloth/Qwen3-0.6B-GGUF
-```
+- install the wheel into the fresh venv;
+- run `canary --version` and `canary rules`;
+- scan one clean fixture (exit 0) and one known-dangerous fixture (non-zero
+  FAIL exit);
+- extract the sdist and run its bundled tests, so `MANIFEST.in` omissions are
+  caught.
 
-The suite checks:
-
-- `--version`;
-- `rules --json`, including that the executable's
-  `rules_bundle_sha256` matches the source tree (proves `known_templates` was
-  bundled);
-- a clean scan exits 0 with no FAIL;
-- an SSTI fixture exits 2 with a `TPL001` FAIL;
-- SARIF 2.1.0 output parses;
-- a local `--bundle` scan reports `CFG001`;
-- optionally, one remote scan over HTTPS.
-
-Do not publish a `building` tag unless the suite passes without `--remote` and
-the optional remote check passes when the network is available.
+A nightly tag should not be pushed unless these checks pass.
 
 ## Publishing a nightly
 
@@ -83,25 +57,30 @@ git tag -a v0.3.1-building.1 -m "building: v0.3.1-building.1"
 git push origin v0.3.1-building.1
 ```
 
-Then attach the executable to a GitHub **prerelease** for that tag:
+Attach the wheel and sdist to a GitHub **prerelease** for that tag:
 
 ```powershell
-gh release create v0.3.1-building.1 outputs\building\canary-building.exe `
+gh release create v0.3.1-building.1 outputs\building-dist\* `
   --prerelease --title "building v0.3.1-building.1" `
   --notes "Nightly build; see CHANGELOG.md. Not an official release."
 ```
+
+GitHub reserves the "Latest" badge for non-prerelease releases, so the newest
+stable release keeps it; the nightly is the newest release and sits at the top
+of the Releases list, labeled Pre-release.
 
 ## Promoting to main
 
 Promotion is a deliberate merge (or PR) from `building` to `main`, never an
 automatic fast-forward:
 
-1. Confirm the full test suite and the executable smoke suite pass on
+1. Confirm the full test suite and the installed-wheel checks pass on
    `building`.
 2. Merge `building` into `main`.
 3. Choose `main`'s release version independently and update
    `pyproject.toml` and `c4nary/__init__.py` together.
-4. Update `CHANGELOG.md` for the release, build and verify the release
-   artifact, then tag `vX.Y.Z` on `main`.
+4. Update `CHANGELOG.md`, then follow `RELEASE.md`: build, verify the wheel and
+   sdist, tag `vX.Y.Z`, create the GitHub release, and upload the verified
+   archives to PyPI.
 
 `main` must remain the only branch that carries official release tags.
