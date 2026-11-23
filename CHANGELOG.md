@@ -15,6 +15,16 @@
 - GGUF output is byte-identical across the refactor: the baseline case diff is empty.
   Rule ids, severities, finding text and order, and coverage strings are unchanged.
 
+### Build
+- Add a pinned PyInstaller build (`requirements-build.txt`, `tools/build_exe.py`) that
+  emits a single-file `canary-building.exe`, including package data and the lazily
+  imported `requests` dependency while excluding the MCP and test extras. Build caches,
+  work paths, and temp live under `outputs/building/`.
+- Add `tools/verify_exe.py`, a smoke suite covering version, rules provenance, clean and
+  FAIL scans, SARIF, a local bundle scan, and an optional remote scan.
+- Document the `main`/`building` split, semver-prerelease tags for nightly builds, and
+  promotion rules in `docs/BUILDING.md`.
+
 ### Ingest
 - Classify the scan target before any parser sees it, so a GGUF file becomes one ingest
   among several rather than the entry ticket. `scan` gains `--as {gguf,ollama,repo}` to
