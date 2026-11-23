@@ -16,7 +16,7 @@ else:  # pragma: no cover
 
 from c4nary import __version__
 from c4nary.bundle import ReadResult
-from c4nary.mcp_server import run_scan
+from c4nary.mcp_server import build_server, run_scan
 
 
 def test_mcp_version_matches_pyproject():
@@ -184,6 +184,22 @@ def test_run_scan_repo_rejects_single_gguf_arguments(tmp_path):
         run_scan(str(root), target_type="repo", manifest_path="m.json")
     with pytest.raises(ValueError):
         run_scan(str(root), remote=True, target_type="repo", hf_filename="x.gguf")
+    with pytest.raises(ValueError):
+        run_scan(str(root), remote=True, target_type="repo", gguf_filename="x.gguf")
+
+
+def test_scan_exposes_canonical_gguf_filename() -> None:
+    assert "gguf_filename" in inspect.signature(run_scan).parameters
+    anyio = pytest.importorskip("anyio")
+    pytest.importorskip("mcp")
+
+    def tools():
+        return anyio.run(build_server().list_tools)
+
+    scan_tool = next(tool for tool in tools() if tool.name == "scan")
+    props = scan_tool.inputSchema["properties"]
+    assert "gguf_filename" in props
+    assert "hf_filename" in props  # compatibility alias remains
 
 
 def test_run_scan_rejects_unknown_target_type(tmp_path):

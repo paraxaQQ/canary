@@ -26,7 +26,7 @@ def test_no_args_non_tty_prints_help_not_hang(capsys):
 
 
 def test_interactive_rules_then_quit(monkeypatch, capsys):
-    _feed(monkeypatch, ["5", "q"])
+    _feed(monkeypatch, ["7", "q"])
     rc = cli.interactive()
     out = capsys.readouterr().out
     assert rc == 0
@@ -45,10 +45,21 @@ def test_interactive_scan_local_file(monkeypatch, capsys, tmp_path):
     assert "c4nary scan" in out
 
 
+def test_interactive_local_repository(monkeypatch, capsys, tmp_path):
+    (tmp_path / "tokenizer.json").write_text(
+        '{"model":{"vocab":{"a":0}}}', encoding="utf-8")
+    _feed(monkeypatch, ["3", str(tmp_path), "q"])
+
+    assert cli.interactive() == 0
+    out = capsys.readouterr().out
+    assert "c4nary scan:" in out
+    assert "repo scan" in out
+
+
 def test_interactive_bad_choice_reprompts(monkeypatch, capsys):
     _feed(monkeypatch, ["x", "q"])
     assert cli.interactive() == 0
-    assert "choose 1-5" in capsys.readouterr().out
+    assert "choose 1-7" in capsys.readouterr().out
 
 
 def test_interactive_eof_exits_clean(monkeypatch):

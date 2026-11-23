@@ -1,4 +1,4 @@
-# A3 — repo-native ingest (GGUF-less)
+# A3 — repository-target ingest
 
 *Scoping document for A3, with A3a/A3b/A3c implementation notes. Target: the v1.0.0
 "global-on-surface" release, on `building` first. A3a (local repo), A3b (remote
@@ -27,7 +27,7 @@ scan. Rules that need GGUF metadata, tensors, or structure are reported as
 - No Ollama Modelfile ingest (A4).
 - No change to the GGUF path. The 19-case A2 baseline must stay byte-identical.
 - No nightly artifact on PyPI. A3 lands on `building`; nightly is
-  `v0.3.1-building.2` (wheel + sdist prerelease).
+  `v0.3.1-building.N` (wheel + sdist prerelease).
 
 ## 2. Why this is the next slice
 
@@ -48,7 +48,7 @@ repo file for a GGUF-anchored `--bundle` scan. A3 is therefore mostly:
 | `scan org/model --remote --as repo` | A3b; fetch the fixed repo allowlist, no GGUF/weights |
 | `--bundle` in repo mode | implied by the target; accept and emit a `note:` that it is already on |
 | `--deep-tokenizer` in repo mode | accepted; `tokenizer.deep` is `partial` (no token types); no seam findings |
-| `--file` in repo mode | error 3: a specific GGUF filename has no meaning for a repo target |
+| `--gguf-file` (`--file` alias) in repo mode | error 3: a specific GGUF filename has no meaning for a repository target |
 | `--manifest` in repo mode | error 3 for now: manifest compare is tied to a single GGUF |
 | `--json` / `--sarif` / `--policy` / `--baseline` / `--fail-on` | unchanged |
 | exit codes | unchanged: 0 clean, 1 warn, 2 FAIL, 3 error |
@@ -272,8 +272,8 @@ The local slice shipped with a few refinements discovered during verification:
 
 1. **`--bundle` in repo mode:** implied by the target; accept it and emit a
    `note:` that bundle surfaces are already being read.
-2. **`--file` / `--manifest` in repo mode:** reject with exit 3; both are
-   single-GGUF concepts.
+2. **`--gguf-file` (`--file` alias) / `--manifest` in repo mode:** reject with
+   exit 3; both are single-GGUF concepts.
 3. **`template_sha256`:** `null` for repo targets. Do not change the field's
    meaning.
 4. **Coverage ids:** reuse `bundle.<file>` rows and add the repo summary rows
@@ -313,8 +313,8 @@ The local slice shipped with a few refinements discovered during verification:
   never emitted. `template_sha256` stays `null`.
 - **MCP.** `run_scan(..., target_type="repo")` returns the same dict shape as
   the GGUF path with `sha256` and `template_sha256` null. `manifest_path` and
-  `hf_filename` are rejected for a repo target; an unknown `target_type` is a
-  `ValueError`.
+  `gguf_filename` (`hf_filename` alias) are rejected for a repository target; an
+  unknown `target_type` is a `ValueError`.
 
 ## 13. A3c implementation notes (safetensors header)
 

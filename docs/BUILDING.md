@@ -1,20 +1,24 @@
 # Branches and releases
 
-`main` is the release branch. `building` is the nightly/integration branch.
-Feature work, fixes, and refactors land on `building`; `main` only receives
-release updates and official tags.
+`main` is the release branch. `building` is the branch that carries **nightly**
+builds. Feature work, fixes, and refactors land on `building`; `main` only
+receives release updates and official tags. Canonical names live in
+[NAMING.md](NAMING.md).
 
 ## Versioning and tags
 
 - **`main` versions are independent.** A release version is chosen when `main`
   is promoted; it is never copied from `building`.
-- **`building` has its own version sequence.** It starts at the package version
-  `0.3.1` and increments its own prerelease build number from there.
-- **Tags are semver prereleases for `building`:** `v0.3.1-building.1`,
-  `v0.3.1-building.2`, then a new base version when `building` advances.
+- **`building` carries a nightly version.** The base is `X.Y.Z`; the local build
+  segment carries the nightly number: `X.Y.Z+building.N`.
+- **Tags are semver prereleases for `building`:** `vX.Y.Z-building.N`, e.g.
+  `v0.3.1-building.5`.
 - **Official release tags are plain semver on `main`:** `v0.3.1`, `v0.4.0`,
   `v1.0.0`.
 - `main` never inherits `building`'s version number.
+- The local `+building.N` segment keeps a nightly wheel distinct from the stable
+  `X.Y.Z` wheel and sorts after the stable version. PyPI rejects local versions,
+  so nightlies stay on GitHub prereleases.
 
 ## Nightly artifacts: the standard wheel/sdist path
 
@@ -31,9 +35,9 @@ release `dist/` tree:
 .\.venv\Scripts\python.exe -m twine check outputs\building-dist\*
 ```
 
-The nightly wheel carries the same package version as the current base
-(`0.3.1`); it is identified by its commit and tag, not its filename. **Do not
-upload a nightly build to PyPI.**
+The nightly wheel carries `X.Y.Z+building.N` (for example
+`c4nary-0.3.1+building.5-py3-none-any.whl`), so it is not confused with the
+stable `0.3.1` artifact. **Do not upload a nightly build to PyPI.**
 
 ## Verification
 
@@ -53,15 +57,15 @@ A nightly tag should not be pushed unless these checks pass.
 
 ```powershell
 git push -u origin building
-git tag -a v0.3.1-building.1 -m "building: v0.3.1-building.1"
-git push origin v0.3.1-building.1
+git tag -a v0.3.1-building.5 -m "nightly: v0.3.1-building.5"
+git push origin v0.3.1-building.5
 ```
 
 Attach the wheel and sdist to a GitHub **prerelease** for that tag:
 
 ```powershell
-gh release create v0.3.1-building.1 outputs\building-dist\* `
-  --prerelease --title "building v0.3.1-building.1" `
+gh release create v0.3.1-building.5 outputs\building-dist\* `
+  --prerelease --title "nightly v0.3.1-building.5" `
   --notes "Nightly build; see CHANGELOG.md. Not an official release."
 ```
 

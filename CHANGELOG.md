@@ -15,6 +15,28 @@
 - GGUF output is byte-identical across the refactor: the baseline case diff is empty.
   Rule ids, severities, finding text and order, and coverage strings are unchanged.
 
+### Naming
+- Add `docs/NAMING.md` and standardize the public vocabulary: **c4nary** is the
+  project/package, **canary** is the command, targets are **GGUF** / **repository**
+  / **Ollama**, `--remote` means Hugging Face, and `--bundle` is a GGUF-only flag.
+  Repository targets read those surfaces by default.
+- `--gguf-file` is the canonical remote-GGUF filename flag; `--file` remains a
+  hidden compatibility alias. `--manifest` is documented as local-GGUF-only, and
+  `--deep-tokenizer` now states its repository behavior.
+- The interactive menu gains local and Hugging Face repository scans; `--ollama`
+  is documented as an alias for `--as ollama`.
+- MCP gains the canonical `gguf_filename` parameter; `hf_filename` remains a
+  compatibility alias. The `scan` docstring now describes GGUF and repository
+  targets.
+- Nightly builds now carry a distinct PEP 440 local version,
+  `X.Y.Z+building.N`, matching the `vX.Y.Z-building.N` tag. The stable `main`
+  version stays `X.Y.Z`; nightlies remain GitHub prereleases and are never
+  uploaded to PyPI.
+- Coverage IDs keep the historical `bundle.<file>` prefix for schema stability;
+  the canonical term is “repository file,” and a rename is deferred to v1.0.0.
+  No rule, finding, or coverage behavior changed; `tool_version` now carries the
+  nightly local segment.
+
 ### Ingest
 - Classify the scan target before any parser sees it, so a GGUF file becomes one ingest
   among several rather than the entry ticket. `scan` gains `--as {gguf,ollama,repo}` to
@@ -58,10 +80,11 @@
 - The CLI and the MCP `scan` tool now share one `repo.scan_repo` pass, so repo
   findings, report-time policy/baseline handling, and coverage cannot drift. MCP gains
   an additive `target_type` (`None`/`"gguf"`/`"repo"`); a repo target returns the same
-  dict shape as a GGUF scan and rejects `manifest_path` / `hf_filename`.
-- `--file` and `--manifest` remain single-GGUF concepts and are rejected for a repo.
-  A3b adds no rules and changes no GGUF output; it lands on `building` with no
-  version bump and no PyPI release.
+  dict shape as a GGUF scan and rejects `manifest_path` /
+  `gguf_filename` (`hf_filename` alias).
+- `--gguf-file` (`--file` alias) and `--manifest` remain single-GGUF concepts and
+  are rejected for a repository target. A3b adds no rules and changes no GGUF
+  output; it lands on `building` with no PyPI release.
 - Repo scans now parse **safetensors headers only** and run the existing `TOK002`
   vocabulary-vs-embedding/output-axis check against the model's real tensor shapes.
   A local `scan <dir> --as repo` reads the 8-byte prefix and header JSON of each

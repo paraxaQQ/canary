@@ -510,7 +510,7 @@ def test_remote_repo_rejects_file_and_manifest(capsys, monkeypatch) -> None:
     ])
     captured = capsys.readouterr()
     assert rc == cli.EXIT_ERROR
-    assert "--file names a single GGUF" in captured.err
+    assert "names a single GGUF" in captured.err
     assert fake.fetched == []
 
     rc = cli.main([

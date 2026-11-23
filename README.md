@@ -139,7 +139,7 @@ false-positive classes found + fixed in the wild, and the evasion analysis:
      rules are WARN/INFO in v0.3; none inherit the calibrated template FAIL
      claim.
 
-   The ten fixed repo-side files plus referenced Python are fetched with opt-in
+   The ten fixed repository files plus referenced Python are fetched with opt-in
    `--bundle` for a GGUF scan. A repository that contains no GGUF at all is
    its own target: `canary scan path\to\repo --as repo` reads those same
    surfaces (configs, tokenizer.json, templates, card, `auto_map` Python) and
@@ -201,6 +201,25 @@ Trust the structural FAILs; triage the behavioral WARNs.
 
 Every finding maps to a registered rule id; run `canary rules` for the full list.
 
+## Naming
+
+- **c4nary** is the project and package; **canary** is the command (the `c4nary`
+  console script is an alias).
+- Target types are **GGUF**, **repository**, and **Ollama** (not implemented).
+  `--as {gguf,repo,ollama}` selects one; a local directory defaults to `repo`.
+- `--remote` means the target is on Hugging Face. `--as` decides whether that
+  means a GGUF header or repository files.
+- `--bundle` is a **GGUF-only** flag; a repository target reads those surfaces by
+  default.
+- `--gguf-file` is the canonical filename flag (`--file` is a compatibility
+  alias). MCP calls it `gguf_filename` (`hf_filename` is the old alias).
+- The **nightly** channel is the `building` branch, tags `vX.Y.Z-building.N`, and
+  package versions `X.Y.Z+building.N`. `main` is the stable release branch.
+- Historical coverage IDs keep the `bundle.<file>` prefix for schema stability;
+  the canonical term is “repository file.”
+
+Full glossary: [docs/NAMING.md](docs/NAMING.md).
+
 ## Install
 
 ```sh
@@ -217,8 +236,8 @@ render). Python 3.10+.
 ## Usage
 
 Run `canary` with **no arguments** for an interactive, menu-driven prompt (scan a
-file, scan a Hugging Face model, diff, hash, or list rules) — no flags to memorize.
-Every action also has a flag-based subcommand for scripts and CI:
+GGUF or repository, diff, hash, or list rules) — no flags to memorize. Every
+action also has a flag-based subcommand for scripts and CI:
 
 ```sh
 canary                                 # interactive menu (on a terminal)
@@ -237,7 +256,7 @@ canary scan model.gguf --baseline baseline.json
 canary scan model.gguf --bundle           # config, tokenizer.json, card, auto_map Python
 canary scan model.gguf --deep-tokenizer   # materialize the vocab; TOK012/TOK015
 
-# A local repo with no GGUF file (repo-native, offline):
+# A local repository target (no GGUF, offline):
 canary scan path\to\repo --as repo
 canary scan path\to\repo --as repo --deep-tokenizer   # tokenizer.deep is partial
 
@@ -259,14 +278,14 @@ template / metadata / tokenizer rules. Useful for triaging models at the source.
 ```sh
 pip install "c4nary[remote]"                     # one extra dep: requests
 canary scan --remote unsloth/Llama-3.2-1B-Instruct-GGUF
-canary scan --remote bartowski/Qwen2.5-7B-Instruct-GGUF --file Qwen2.5-7B-Instruct-Q4_K_M.gguf
+canary scan --remote bartowski/Qwen2.5-7B-Instruct-GGUF --gguf-file Qwen2.5-7B-Instruct-Q4_K_M.gguf
 canary scan --remote https://huggingface.co/org/repo/resolve/main/model.gguf --json
 
 # v2 deep surfaces (opt-in; more fetching):
 canary scan --remote <repo> --deep-tokenizer   # materialize the full vocab -> template<->tokenizer seam (TOK)
 canary scan --remote <repo> --bundle           # audit the 10-file bundle + auto_map Python -> DOC/CFG/NRM/TPL/RMT
 
-# A repo with no GGUF: fetch only its fixed repo files (never weights):
+# A repository with no GGUF: fetch only its fixed files (never weights):
 canary scan org/model --remote --as repo
 ```
 

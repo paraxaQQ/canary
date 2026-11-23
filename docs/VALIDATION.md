@@ -236,7 +236,7 @@ and `README.md` were not recorded by the eight-file harness, so their population
 are unknown. `auto_map` values live in file *contents*, which the inventory never
 stored, so the widened population cannot be derived offline at any confidence.
 
-**Repo-native GGUF-less ingest is shipped, local and remote**:
+**Repository-target ingest is shipped, local and remote**:
 `canary scan <dir> --as repo` and `canary scan org/model --remote --as repo`.
 Both read the same fixed repository surfaces plus `auto_map` Python with no GGUF
 anchor, run the CFG / NRM / DOC / TPL / TOK / RMT rules, and report GGUF-only

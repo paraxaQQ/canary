@@ -115,7 +115,7 @@ def test_cli_repo_as_non_directory_exits_3(tmp_path, capsys):
     rc = cli.main(["scan", _gguf(tmp_path), "--as", "repo", "--json"])
     assert rc == cli.EXIT_ERROR
     captured = capsys.readouterr()
-    assert "repo target must be a local directory" in captured.err
+    assert "repository target must be a local directory" in captured.err
     assert captured.out == ""
 
 

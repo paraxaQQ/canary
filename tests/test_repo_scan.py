@@ -204,7 +204,7 @@ def test_repo_notes_report_skipped_summaries(tmp_path, capsys) -> None:
     for phrase in (
         "no GGUF metadata",
         "no GGUF tensor map",
-        "no repo chat template source",
+        "no repository chat template source",
         "manifest comparison is not supported",
         "tokenizer.json was absent",
     ):
@@ -372,7 +372,7 @@ def test_bundle_flag_is_accepted_with_a_note(tmp_path, capsys) -> None:
 @pytest.mark.parametrize(
     ("extra", "message"),
     [
-        (("--file", "x.gguf"), "--file names a single GGUF"),
+        (("--gguf-file", "x.gguf"), "--gguf-file"),
         (("--manifest", "m.json"), "--manifest compares a single GGUF"),
     ],
 )

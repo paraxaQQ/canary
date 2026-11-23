@@ -310,7 +310,7 @@ def _tensor_map_surface(artifact) -> Surface:
         return Surface(
             "tensor_map.consistency",
             "absent",
-            "a repo target has no GGUF tensor map; no top-level .safetensors "
+            "a repository target has no GGUF tensor map; no top-level .safetensors "
             "file was present.",
         )
 
@@ -388,53 +388,53 @@ def build_repo_coverage(
     policy_requested: bool = False,
     retiered_count: int = 0,
 ) -> Coverage:
-    """Coverage manifest for a repo target, local or remote (GGUF-less ingest)."""
+    """Coverage manifest for a repository target, local or remote."""
     template_count = artifact.template_count
     parse_failures = sum(finding.rule_id == "TPL000" for finding in template_findings)
     if artifact.template_source_refused:
         template_surface = Surface(
             "chat_templates",
             "skipped",
-            "a repo chat template source was not read (refused or unavailable); "
+            "a repository chat template source was not read (refused or unavailable); "
             "its template status is unknown.",
         )
     elif artifact.template_source_partial:
         template_surface = Surface(
             "chat_templates",
             "partial",
-            "a repo chat template source exceeded the reader cap; it was examined "
+            "a repository chat template source exceeded the reader cap; it was examined "
             "partially.",
         )
     elif artifact.template_source_unparseable:
         template_surface = Surface(
             "chat_templates",
             "unparseable",
-            "a repo chat template source was present but could not be parsed; its "
+            "a repository chat template source was present but could not be parsed; its "
             "template status is unknown.",
         )
     elif template_count == 0:
         template_surface = Surface(
             "chat_templates",
             "absent",
-            "no repo chat template source was present.",
+            "no repository chat template source was present.",
         )
     elif parse_failures == 0:
         template_surface = Surface(
             "chat_templates",
             "examined",
-            f"all {template_count} repo chat template source(s) were parsed and examined.",
+            f"all {template_count} repository chat template source(s) were parsed and examined.",
         )
     elif parse_failures >= template_count:
         template_surface = Surface(
             "chat_templates",
             "unparseable",
-            f"all {template_count} repo chat template source(s) failed Jinja parsing.",
+            f"all {template_count} repository chat template source(s) failed Jinja parsing.",
         )
     else:
         template_surface = Surface(
             "chat_templates",
             "partial",
-            f"{parse_failures} of {template_count} repo chat template source(s) failed parsing.",
+            f"{parse_failures} of {template_count} repository chat template source(s) failed parsing.",
         )
 
     if artifact.tokenizer_truncated:
@@ -551,18 +551,18 @@ def build_repo_coverage(
         Surface(
             "metadata",
             "absent",
-            "a repo target has no GGUF metadata; MET001-MET016 were not applicable.",
+            "a repository target has no GGUF metadata; MET001-MET016 were not applicable.",
         ),
         Surface(
             "structure",
             "absent",
-            "a repo target has no GGUF container; STR001-STR008 were not applicable.",
+            "a repository target has no GGUF container; STR001-STR008 were not applicable.",
         ),
         _tensor_map_surface(artifact),
         Surface(
             "manifest",
             "absent",
-            "manifest comparison is not supported for a repo target in A3.",
+            "manifest comparison is not supported for a repository target in A3.",
         ),
         baseline_surface,
         policy_surface,

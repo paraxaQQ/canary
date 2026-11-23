@@ -1,8 +1,8 @@
 """MCP server: expose c4nary's auditing over the Model Context Protocol.
 
 A thin wrapper around the same engine the CLI uses, so an MCP-capable agent
-(Claude Desktop / Claude Code / any MCP client) can audit GGUF chat templates
-and metadata as tools. The invariants are unchanged: the tools parse only
+(Claude Desktop / Claude Code / any MCP client) can audit GGUF models and
+repositories as tools. The invariants are unchanged: the tools parse only
 (never render or run a model), are read-only on inputs, and are deterministic.
 The single network path is the opt-in ``remote`` flag on ``scan`` -- exactly
 as on the CLI.
@@ -54,9 +54,9 @@ SERVER_INSTRUCTIONS = (
     "c4nary statically audits a GGUF model's embedded Jinja2 chat template, "
     "metadata, tokenizer, and structure for risk indicators (Jinja2 SSTI / "
     "sandbox-escape primitives, behavioral 'silent-hijack' shapes, hidden "
-    "characters, and structural tampering). It also audits GGUF-less repository "
-    "targets -- local directories or remote Hugging Face repos -- over their "
-    "config, tokenizer.json, template sources, model card, and auto_map Python "
+    "characters, and structural tampering). It also audits repository targets -- "
+    "local directories or remote Hugging Face repositories -- over their config, "
+    "tokenizer.json, template sources, model card, and auto_map Python "
     "(set target_type='repo'), without reading weights. It parses only -- it "
     "never renders the template or runs the model -- and is read-only and "
     "deterministic. Findings are heuristic risk indicators, NOT proof that a "
@@ -71,7 +71,7 @@ def _summary(findings: list) -> dict[str, int]:
 
 
 def _run_scan_repo(path: str, *, remote: bool, deep_tokenizer: bool) -> dict:
-    """Repo target through the shared CLI/MCP rule pass (``repo.scan_repo``)."""
+    """Repository target through the shared CLI/MCP pass (``repo.scan_repo``)."""
     from .repo import load_local_repo, load_remote_repo, scan_repo
 
     repo = load_remote_repo(path) if remote else load_local_repo(path)
@@ -98,8 +98,9 @@ def run_scan(
     deep_tokenizer: bool = False,
     bundle: bool = False,
     target_type: str | None = None,
+    gguf_filename: str | None = None,
 ) -> dict:
-    """Audit a GGUF model's chat template, metadata, and tokenizer for risk indicators.
+    """Audit a GGUF model or repository target for risk indicators.
 
     This is the primary tool. It runs the template (TPL*), metadata (MET*),
     tokenizer (TOK*), and -- for local files -- structural (STR*) rule sets; with
@@ -112,8 +113,8 @@ def run_scan(
         path: Path to a local ``.gguf`` file. With ``remote=True`` this is instead
             a Hugging Face repo id (``org/name``), an ``hf://org/name`` ref, or a
             direct ``http(s)://`` URL to a ``.gguf``. With ``target_type="repo"``
-            it is a local repo directory, or -- with ``remote=True`` -- a Hugging
-            Face repo id / ``hf://org/name``.
+            it is a local repository directory, or -- with ``remote=True`` -- a
+            Hugging Face repo id / ``hf://org/name``.
         remote: If true, range-fetch only the model's GGUF *header* over the
             network (metadata + template + tensor map, never the weights) instead
             of reading a local file. This is the only network-touching option and
@@ -121,9 +122,11 @@ def run_scan(
             integrity checks are skipped on remote scans (the file is truncated).
             With ``target_type="repo"`` it instead lists the repo and fetches its
             fixed allowlist of repo files -- still no GGUF and no weights.
-        hf_filename: With ``remote=True`` and a GGUF target, the specific
+        gguf_filename: With ``remote=True`` and a GGUF target, the specific
             ``.gguf`` filename to fetch from the repo. Omit to auto-pick the
-            smallest single-file quant. Rejected for a repo target.
+            smallest single-file quant. Rejected for a repository target.
+        hf_filename: Deprecated alias for ``gguf_filename``; kept for existing
+            callers. Do not pass both with different values.
         manifest_path: Optional path to a known-good manifest JSON (from the
             ``hash`` tool). Local scans compare against it and emit INT* drift
             findings. Ignored for remote scans. Rejected for a repo target.
@@ -157,16 +160,23 @@ def run_scan(
         raise ValueError(
             f"unknown target_type {target_type!r}; expected 'gguf', 'repo', or None"
         )
+    if gguf_filename is not None:
+        if hf_filename is not None and hf_filename != gguf_filename:
+            raise ValueError(
+                "gguf_filename and hf_filename name different files; pass only "
+                "gguf_filename"
+            )
+        hf_filename = gguf_filename
     if target_type == "repo":
         if manifest_path:
             raise ValueError(
                 "manifest_path compares a single GGUF and is not supported for a "
-                "repo target"
+                "repository target"
             )
         if hf_filename:
             raise ValueError(
-                "hf_filename names a single GGUF and has no meaning for a repo "
-                "target"
+                "gguf_filename names a single GGUF and has no meaning for a "
+                "repository target"
             )
         return _run_scan_repo(path, remote=remote, deep_tokenizer=deep_tokenizer)
 

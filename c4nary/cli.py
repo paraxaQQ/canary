@@ -99,28 +99,33 @@ def _is_interactive() -> bool:
 def _build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="canary",
-        description="Deterministic, offline, read-only GGUF security auditor. "
-                    "Detects risk indicators; does not prove a model safe or malicious.",
+        description="Deterministic, offline, read-only GGUF and repository security "
+                    "auditor. Detects risk indicators; does not prove a model safe "
+                    "or malicious.",
     )
     p.add_argument("--version", action="version", version=f"c4nary {__version__}")
     sub = p.add_subparsers(dest="command")
 
-    sp = sub.add_parser("scan", help="audit a GGUF file, a local repo, or a remote repo")
-    sp.add_argument("file", help="path to a .gguf file, a local repo directory "
-                                 "(repo target), or (with --remote) a Hugging Face "
-                                 "repo id or URL")
+    sp = sub.add_parser("scan", help="audit a GGUF model or repository")
+    sp.add_argument("file", help="path to a .gguf file, a repository directory "
+                                 "(--as repo), or (with --remote) a Hugging Face "
+                                 "repo id; a GGUF URL is accepted only for a GGUF "
+                                 "target")
     output = sp.add_mutually_exclusive_group()
     output.add_argument("--json", action="store_true", help="emit deterministic JSON")
     output.add_argument("--sarif", action="store_true", help="emit deterministic SARIF 2.1.0")
     sp.add_argument("--manifest", metavar="M.JSON",
-                    help="compare against a known-good manifest (local scans only)")
+                    help="compare a local GGUF against a known-good manifest "
+                         "(local GGUF only)")
     sp.add_argument("--remote", action="store_true",
-                    help="audit a model's header over the network without "
-                         "downloading its weights (Hugging Face repo id or URL). "
-                         "With --as repo, audit a remote repository's fixed "
-                         "allowlist instead (no GGUF, no weights)")
-    sp.add_argument("--file", dest="hf_filename", metavar="NAME.gguf",
-                    help="with --remote, the specific .gguf filename to fetch")
+                    help="the target is on Hugging Face: a GGUF header for a GGUF "
+                         "target, or the repository's fixed files and safetensors "
+                         "headers with --as repo; no weights")
+    sp.add_argument("--gguf-file", dest="hf_filename", metavar="NAME.gguf",
+                    help="with --remote and a GGUF target, the specific .gguf "
+                         "filename to fetch")
+    # Compatibility alias; omitted from --help.
+    sp.add_argument("--file", dest="hf_filename", help=argparse.SUPPRESS)
     sp.add_argument("--fail-on", choices=("warn", "fail", "none"), default=None,
                     help="exit non-zero threshold (default: policy, then fail)")
     sp.add_argument("--policy", metavar="POLICY.JSON",
@@ -128,21 +133,21 @@ def _build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--baseline", metavar="BASELINE.JSON",
                     help="suppress matching finding fingerprints with required justifications")
     sp.add_argument("--deep-tokenizer", action="store_true",
-                    help="materialize the full tokenizer vocab and run the seam / "
-                         "reachability checks (TOK012/TOK015); off by default")
+                    help="GGUF: materialize the full tokenizer vocab and run the "
+                         "seam checks (TOK012/TOK015). Repository: tokenizer.deep is "
+                         "partial or skipped because tokenizer.json has no token "
+                         "types; no seam findings")
     sp.add_argument("--bundle", action="store_true",
-                    help="also audit the repo bundle -- decode-time levers (CFG*), "
-                         "tokenizer.json (NRM*), model card (DOC*), a divergent repo "
-                         "template (TPL030), and any auto_map custom Python, which is "
-                         "parsed with ast only and never imported or executed (RMT*). "
-                         "Opt-in; materializes the vocab. Reads files beside the .gguf "
-                         "locally, and fetches them only with --remote")
+                    help="GGUF target only: also audit repository surfaces -- "
+                         "decode-time levers (CFG*), tokenizer.json (NRM*), model "
+                         "card (DOC*), a divergent repo template (TPL030), and any "
+                         "auto_map custom Python (RMT*; ast only, never executed). "
+                         "Repository targets read these by default")
     sp.add_argument("--as", dest="as_type", choices=TARGETS, default=None,
-                    help="force the target type instead of detecting it from the "
-                         "target itself")
+                    help="target type; a local directory defaults to repo")
     sp.add_argument("--ollama", action="store_true",
-                    help="the target is an Ollama model reference (e.g. "
-                         "library/qwen3:0.6b), not a file path")
+                    help="alias for --as ollama: the target is an Ollama reference "
+                         "(e.g. library/qwen3:0.6b), not a file path")
     sp.set_defaults(func=_cmd_scan)
 
     dp = sub.add_parser("diff", help="structural diff of two GGUF files")
@@ -279,8 +284,8 @@ def _scan_gguf(args, policy, baseline) -> _ScanResult:
 
 
 def _scan_repo(args, policy, baseline) -> _ScanResult:
-    """The repo ingest: load a local directory or remote repository and run the
-    shared repo rule pass (``repo.scan_repo``), which the MCP tool also calls."""
+    """The repository ingest: load a local directory or remote repository and run
+    the shared rule pass (``repo.scan_repo``), which the MCP tool also calls."""
     from .repo import load_local_repo, load_remote_repo, scan_repo
 
     repo = load_remote_repo(args.file) if args.remote else load_local_repo(args.file)
@@ -312,12 +317,12 @@ def _cmd_scan(args) -> int:
 
     if target == "repo":
         if getattr(args, "hf_filename", None):
-            print("c4nary: error: --file names a single GGUF and has no meaning for "
-                  "a repo target.", file=sys.stderr)
+            print("c4nary: error: --gguf-file (--file) names a single GGUF and has "
+                  "no meaning for a repository target.", file=sys.stderr)
             return EXIT_ERROR
         if getattr(args, "manifest", None):
             print("c4nary: error: --manifest compares a single GGUF and is not "
-                  "supported for a repo target.", file=sys.stderr)
+                  "supported for a repository target.", file=sys.stderr)
             return EXIT_ERROR
         if args.remote:
             # A repo id such as 'gpt2' or 'org/model' may also name a local
@@ -335,7 +340,7 @@ def _cmd_scan(args) -> int:
                       file=sys.stderr)
                 return EXIT_ERROR
         elif not os.path.isdir(args.file):
-            print(f"c4nary: error: repo target must be a local directory: "
+            print(f"c4nary: error: repository target must be a local directory: "
                   f"{args.file}", file=sys.stderr)
             return EXIT_ERROR
         if getattr(args, "bundle", False):
@@ -472,8 +477,8 @@ def _render_diff_human(path_a: str, path_b: str, diff: dict) -> str:
 # --------------------------------------------------------------------------- #
 
 _BANNER = (
-    "c4nary - GGUF chat-template security auditor\n"
-    "Flags it for risk indicators; never renders the template or runs the model.\n"
+    "c4nary - GGUF and repository security auditor\n"
+    "Flags risk indicators; never renders the template or runs the model.\n"
 )
 
 
@@ -481,10 +486,12 @@ def interactive() -> int:
     print(_BANNER)
     menu = [
         ("1", "Scan a local .gguf file", _i_scan_local),
-        ("2", "Scan a Hugging Face model (no download)", _i_scan_remote),
-        ("3", "Diff two .gguf files", _i_diff),
-        ("4", "Hash a file / write a manifest", _i_hash),
-        ("5", "List the detection rules", _i_rules),
+        ("2", "Scan a Hugging Face GGUF (header only)", _i_scan_remote),
+        ("3", "Scan a local repository", _i_scan_repo_local),
+        ("4", "Scan a Hugging Face repository", _i_scan_repo_remote),
+        ("5", "Diff two .gguf files", _i_diff),
+        ("6", "Hash a .gguf / write a manifest", _i_hash),
+        ("7", "List the detection rules", _i_rules),
     ]
     while True:
         print("What would you like to do?")
@@ -496,11 +503,14 @@ def interactive() -> int:
             return EXIT_OK
         action = next((fn for key, _, fn in menu if key == choice), None)
         if action is None:
-            print("  (choose 1-5 or q)\n")
+            print("  (choose 1-7 or q)\n")
             continue
         try:
             action()
-        except (GGUFParseError, OSError, json.JSONDecodeError) as exc:
+        except (
+            GGUFParseError, OSError, json.JSONDecodeError,
+            PolicyError, RemoteError, RepoError,
+        ) as exc:
             print(f"  error: {exc}")
         print()
 
@@ -513,7 +523,8 @@ def _ask(label: str) -> str | None:
         return None
 
 
-def _scan_args(target: str, *, remote: bool, filename: str | None = None):
+def _scan_args(target: str, *, remote: bool, filename: str | None = None,
+               as_type: str | None = None):
     return argparse.Namespace(
         file=target,
         json=False,
@@ -526,6 +537,7 @@ def _scan_args(target: str, *, remote: bool, filename: str | None = None):
         baseline=None,
         deep_tokenizer=False,
         bundle=False,
+        as_type=as_type,
     )
 
 
@@ -536,11 +548,23 @@ def _i_scan_local() -> None:
 
 
 def _i_scan_remote() -> None:
-    repo = _ask("Hugging Face repo id or URL:")
+    repo = _ask("Hugging Face repo id or GGUF URL:")
     if not repo:
         return
     fn = _ask("Specific .gguf filename (blank = auto):") or None
     _cmd_scan(_scan_args(repo, remote=True, filename=fn))
+
+
+def _i_scan_repo_local() -> None:
+    path = _ask("Path to repository directory:")
+    if path:
+        _cmd_scan(_scan_args(path, remote=False, as_type="repo"))
+
+
+def _i_scan_repo_remote() -> None:
+    repo = _ask("Hugging Face repo id:")
+    if repo:
+        _cmd_scan(_scan_args(repo, remote=True, as_type="repo"))
 
 
 def _i_diff() -> None:

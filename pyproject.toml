@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "c4nary"
-version = "0.3.1"
-description = "Deterministic, read-only static auditor for GGUF chat templates, tokenizer metadata, model cards, configuration, and structural consistency."
+version = "0.3.1+building.5"
+description = "Deterministic, read-only static auditor for GGUF models and repositories: chat templates, tokenizer metadata, model cards, configuration, and structural consistency."
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
