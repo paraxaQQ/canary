@@ -54,16 +54,40 @@ SERVER_INSTRUCTIONS = (
     "c4nary statically audits a GGUF model's embedded Jinja2 chat template, "
     "metadata, tokenizer, and structure for risk indicators (Jinja2 SSTI / "
     "sandbox-escape primitives, behavioral 'silent-hijack' shapes, hidden "
-    "characters, and structural tampering). It parses only -- it never renders "
-    "the template or runs the model -- and is read-only and deterministic. "
-    "Findings are heuristic risk indicators, NOT proof that a model is safe or "
-    "malicious; surface them as 'review recommended', not as a verdict."
+    "characters, and structural tampering). It also audits GGUF-less repository "
+    "targets -- local directories or remote Hugging Face repos -- over their "
+    "config, tokenizer.json, template sources, model card, and auto_map Python "
+    "(set target_type='repo'), without reading weights. It parses only -- it "
+    "never renders the template or runs the model -- and is read-only and "
+    "deterministic. Findings are heuristic risk indicators, NOT proof that a "
+    "model is safe or malicious; surface them as 'review recommended', not as a "
+    "verdict."
 )
 
 
 def _summary(findings: list) -> dict[str, int]:
     counts = summarize(findings)
     return {"fail": counts[FAIL], "warn": counts[WARN], "info": counts[INFO]}
+
+
+def _run_scan_repo(path: str, *, remote: bool, deep_tokenizer: bool) -> dict:
+    """Repo target through the shared CLI/MCP rule pass (``repo.scan_repo``)."""
+    from .repo import load_local_repo, load_remote_repo, scan_repo
+
+    repo = load_remote_repo(path) if remote else load_local_repo(path)
+    findings, coverage = scan_repo(repo, deep=deep_tokenizer)
+    return {
+        "file": repo.display,
+        "sha256": None,
+        "template_sha256": None,
+        "findings": findings_to_dicts(findings),
+        "summary": _summary(findings),
+        "verdict": verdict_line(findings),
+        "notes": coverage.notes(),
+        "coverage": coverage.to_dict(),
+        "tool_version": __version__,
+        "rules_bundle_sha256": rules_bundle_sha256(),
+    }
 
 
 def run_scan(
@@ -73,6 +97,7 @@ def run_scan(
     manifest_path: str | None = None,
     deep_tokenizer: bool = False,
     bundle: bool = False,
+    target_type: str | None = None,
 ) -> dict:
     """Audit a GGUF model's chat template, metadata, and tokenizer for risk indicators.
 
@@ -86,33 +111,65 @@ def run_scan(
     Args:
         path: Path to a local ``.gguf`` file. With ``remote=True`` this is instead
             a Hugging Face repo id (``org/name``), an ``hf://org/name`` ref, or a
-            direct ``http(s)://`` URL to a ``.gguf``.
+            direct ``http(s)://`` URL to a ``.gguf``. With ``target_type="repo"``
+            it is a local repo directory, or -- with ``remote=True`` -- a Hugging
+            Face repo id / ``hf://org/name``.
         remote: If true, range-fetch only the model's GGUF *header* over the
             network (metadata + template + tensor map, never the weights) instead
             of reading a local file. This is the only network-touching option and
             needs the ``requests`` extra. Structural (STR*) and whole-file
             integrity checks are skipped on remote scans (the file is truncated).
-        hf_filename: With ``remote=True``, the specific ``.gguf`` filename to fetch
-            from the repo. Omit to auto-pick the smallest single-file quant.
+            With ``target_type="repo"`` it instead lists the repo and fetches its
+            fixed allowlist of repo files -- still no GGUF and no weights.
+        hf_filename: With ``remote=True`` and a GGUF target, the specific
+            ``.gguf`` filename to fetch from the repo. Omit to auto-pick the
+            smallest single-file quant. Rejected for a repo target.
         manifest_path: Optional path to a known-good manifest JSON (from the
             ``hash`` tool). Local scans compare against it and emit INT* drift
-            findings. Ignored for remote scans.
+            findings. Ignored for remote scans. Rejected for a repo target.
         deep_tokenizer: If true, materialize the full tokenizer vocab and run the
-            template<->tokenizer seam checks (TOK012+). Off by default (extra bandwidth).
+            template<->tokenizer seam checks (TOK012+). Off by default (extra
+            bandwidth). For a repo target, ``tokenizer.deep`` is ``partial`` (or
+            ``skipped`` without a usable vocab) because tokenizer.json has no
+            token-type split.
         bundle: If true, also fetch (remote) or read (local sibling) the repo's config
             (generation_config.json / config.json), tokenizer.json, special-token files,
             model card (README.md), any divergent template source, and the custom Python
             named by an ``auto_map`` entry -- which is read and parsed with ``ast`` only,
             never imported or executed -- and run the CFG / NRM / DOC / TPL030 / RMT
-            rules over them. Off by default (more fetching).
+            rules over them. Off by default (more fetching). For a repo target the
+            bundle surfaces are already the target, so this is implied.
+        target_type: ``None`` / ``"gguf"`` keeps the historical GGUF behavior.
+            ``"repo"`` audits a repo without a GGUF anchor over the same fixed
+            allowlist (configs, tokenizer.json, special-token files, template
+            sources, README.md, auto_map Python) and returns the same dict shape,
+            with ``sha256`` and ``template_sha256`` null.
 
     Returns:
-        A dict with ``file``, ``sha256`` (null for remote), ``template_sha256``,
-        ``findings`` (sorted, deterministic), a ``summary`` count, an honest
-        ``verdict`` line, any ``notes`` about skipped checks, a ``coverage`` manifest
-        naming what was examined, skipped, absent, truncated or unparseable, plus
-        ``tool_version`` and ``rules_bundle_sha256`` identifying the ruleset that ran.
+        A dict with ``file``, ``sha256`` (null for remote and repo scans),
+        ``template_sha256`` (null for a repo target), ``findings`` (sorted,
+        deterministic), a ``summary`` count, an honest ``verdict`` line, any
+        ``notes`` about skipped checks, a ``coverage`` manifest naming what was
+        examined, skipped, absent, truncated or unparseable, plus ``tool_version``
+        and ``rules_bundle_sha256`` identifying the ruleset that ran.
     """
+    if target_type not in (None, "gguf", "repo"):
+        raise ValueError(
+            f"unknown target_type {target_type!r}; expected 'gguf', 'repo', or None"
+        )
+    if target_type == "repo":
+        if manifest_path:
+            raise ValueError(
+                "manifest_path compares a single GGUF and is not supported for a "
+                "repo target"
+            )
+        if hf_filename:
+            raise ValueError(
+                "hf_filename names a single GGUF and has no meaning for a repo "
+                "target"
+            )
+        return _run_scan_repo(path, remote=remote, deep_tokenizer=deep_tokenizer)
+
     materialize = _DEEP_TOK_KEYS if (deep_tokenizer or bundle) else None
     if remote:
         from .remote import fetch_remote_model

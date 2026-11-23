@@ -43,8 +43,25 @@
   is `skipped` (never `absent`), a `repo.links` coverage row names the escape, and the
   row is repeated on stderr. In-root links are followed and scanned under the link name;
   broken/looping links and non-regular targets are `skipped` with a reason.
-- Remote repo ingest (`--remote --as repo`) is **not shipped yet** (A3b) and exits 3;
-  `--file` and `--manifest` remain single-GGUF concepts and are rejected for a repo.
+- Add the **remote repo target**, `canary scan org/model --remote --as repo` (also
+  `hf://org/model`). It lists the Hugging Face repo once, then fetches the same fixed
+  repo surface allowlist as the local target -- configs, `tokenizer.json`,
+  special-token files, template sources, `README.md`, and `auto_map` Python -- with
+  the same caps and renderers. No GGUF is selected, no weights are downloaded, and
+  `sha256` / `template_sha256` stay null. `repo.links` reports `absent` (local link
+  containment does not apply to server-served bytes) and no `REP001` is emitted. A
+  listed-but-unreadable file is `skipped` (never `absent`), so the file surface and
+  its summary (tokenizer, templates) say the content was not read; a 401/404/network
+  failure on the repository itself exits 3. Repo ids are validated before any network
+  call: URLs, local paths, backslashes, `..`, and malformed ids exit 3 with a clear
+  message.
+- The CLI and the MCP `scan` tool now share one `repo.scan_repo` pass, so repo
+  findings, report-time policy/baseline handling, and coverage cannot drift. MCP gains
+  an additive `target_type` (`None`/`"gguf"`/`"repo"`); a repo target returns the same
+  dict shape as a GGUF scan and rejects `manifest_path` / `hf_filename`.
+- `--file` and `--manifest` remain single-GGUF concepts and are rejected for a repo.
+  A3b adds no rules and changes no GGUF output; it lands on `building` with no
+  version bump and no PyPI release.
 
 ### Detection
 - Extend the TPL023 structural shape set with two target-free forms, each requiring

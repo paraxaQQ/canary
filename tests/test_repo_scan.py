@@ -374,7 +374,6 @@ def test_bundle_flag_is_accepted_with_a_note(tmp_path, capsys) -> None:
     [
         (("--file", "x.gguf"), "--file names a single GGUF"),
         (("--manifest", "m.json"), "--manifest compares a single GGUF"),
-        (("--remote",), "remote repo ingest is not implemented yet (A3b)"),
     ],
 )
 def test_repo_rejects_single_gguf_concepts(tmp_path, capsys, extra, message) -> None:

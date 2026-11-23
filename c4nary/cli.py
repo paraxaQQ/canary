@@ -18,7 +18,7 @@ import sys
 from dataclasses import dataclass
 
 from . import __version__
-from .coverage import Coverage, Surface, build_repo_coverage, build_scan_coverage
+from .coverage import Coverage, Surface, build_scan_coverage
 from .ingest import TARGETS, classify_target
 from .integrity import (
     write_manifest,
@@ -33,6 +33,7 @@ from .policy import PolicyError, apply_report_policy, load_baseline, load_policy
 # RemoteError only; remote.py imports requests lazily, so the offline core stays
 # free of a network dependency (pinned by tests/test_remote.py).
 from .remote import RemoteError
+from .repo import RepoError
 from .provenance import rules_bundle_sha256
 from .report import (
     FAIL,
@@ -78,6 +79,7 @@ def main(argv: list[str] | None = None) -> int:
         return args.func(args)
     except (
         GGUFParseError, OSError, json.JSONDecodeError, PolicyError, RemoteError,
+        RepoError,
         # Backstop for any recursive walker over attacker-shaped input without its own
         # depth budget. Escaping instead gives CPython's exit 1, which this tool's table
         # defines as "WARN findings present" -- a crash would read as a passing scan.
@@ -103,7 +105,7 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument("--version", action="version", version=f"c4nary {__version__}")
     sub = p.add_subparsers(dest="command")
 
-    sp = sub.add_parser("scan", help="audit a GGUF file or a local repo")
+    sp = sub.add_parser("scan", help="audit a GGUF file, a local repo, or a remote repo")
     sp.add_argument("file", help="path to a .gguf file, a local repo directory "
                                  "(repo target), or (with --remote) a Hugging Face "
                                  "repo id or URL")
@@ -114,7 +116,9 @@ def _build_parser() -> argparse.ArgumentParser:
                     help="compare against a known-good manifest (local scans only)")
     sp.add_argument("--remote", action="store_true",
                     help="audit a model's header over the network without "
-                         "downloading its weights (Hugging Face repo id or URL)")
+                         "downloading its weights (Hugging Face repo id or URL). "
+                         "With --as repo, audit a remote repository's fixed "
+                         "allowlist instead (no GGUF, no weights)")
     sp.add_argument("--file", dest="hf_filename", metavar="NAME.gguf",
                     help="with --remote, the specific .gguf filename to fetch")
     sp.add_argument("--fail-on", choices=("warn", "fail", "none"), default=None,
@@ -275,49 +279,20 @@ def _scan_gguf(args, policy, baseline) -> _ScanResult:
 
 
 def _scan_repo(args, policy, baseline) -> _ScanResult:
-    """The local repo ingest: read the allowlisted repo files and run every rule
-    that does not need GGUF metadata, tensors, or structure."""
-    from .bundle import repo_findings
-    from .repo import load_local_repo
-    from .rules.repo import analyze_repo_links
+    """The repo ingest: load a local directory or remote repository and run the
+    shared repo rule pass (``repo.scan_repo``), which the MCP tool also calls."""
+    from .repo import load_local_repo, load_remote_repo, scan_repo
 
-    repo = load_local_repo(args.file)
-    vocab = repo.vocab
-    special_ids = repo.special_ids
-    deep = getattr(args, "deep_tokenizer", False)
-
-    findings, bundle_surfaces = repo_findings(
-        repo.read_text,
-        vocab=vocab,
-        special_ids=special_ids,
-    )
-    findings = list(findings)
-    findings += analyze_tokenizer(
-        repo.model,
-        deep=deep,
-        vocab=vocab,
-        special_ids=special_ids,
-    )
-    findings += analyze_repo_links(repo.links)
-
-    registered = [finding.severity for finding in findings]
-    findings = apply_report_policy(findings, policy, baseline)
-    suppressed_count = sum(finding.suppressed for finding in findings)
-    retiered_count = sum(
-        before != after.severity for before, after in zip(registered, findings)
-    )
-    artifact = repo.artifact()
-    coverage = build_repo_coverage(
-        artifact,
-        template_findings=findings,
-        deep_tokenizer=deep,
-        bundle_surfaces=bundle_surfaces,
-        baseline_requested=getattr(args, "baseline", None) is not None,
-        suppressed_count=suppressed_count,
+    repo = load_remote_repo(args.file) if args.remote else load_local_repo(args.file)
+    findings, coverage = scan_repo(
+        repo,
+        deep=getattr(args, "deep_tokenizer", False),
+        policy=policy,
+        baseline=baseline,
         policy_requested=getattr(args, "policy", None) is not None,
-        retiered_count=retiered_count,
+        baseline_requested=getattr(args, "baseline", None) is not None,
     )
-    return _ScanResult(findings, coverage, artifact.display, None, None, "repo")
+    return _ScanResult(findings, coverage, repo.display, None, None, "repo")
 
 
 def _cmd_scan(args) -> int:
@@ -336,14 +311,6 @@ def _cmd_scan(args) -> int:
         return EXIT_ERROR
 
     if target == "repo":
-        if args.remote:
-            print("c4nary: error: remote repo ingest is not implemented yet (A3b).",
-                  file=sys.stderr)
-            return EXIT_ERROR
-        if not os.path.isdir(args.file):
-            print(f"c4nary: error: repo target must be a local directory: "
-                  f"{args.file}", file=sys.stderr)
-            return EXIT_ERROR
         if getattr(args, "hf_filename", None):
             print("c4nary: error: --file names a single GGUF and has no meaning for "
                   "a repo target.", file=sys.stderr)
@@ -351,6 +318,25 @@ def _cmd_scan(args) -> int:
         if getattr(args, "manifest", None):
             print("c4nary: error: --manifest compares a single GGUF and is not "
                   "supported for a repo target.", file=sys.stderr)
+            return EXIT_ERROR
+        if args.remote:
+            # A repo id such as 'gpt2' or 'org/model' may also name a local
+            # directory. The explicit --remote flag wins; only an absolute,
+            # drive-qualified, or backslash path is treated as a local-target
+            # mistake. A forward slash is the repo-id separator, not a path tell.
+            path_like = (
+                os.path.isabs(args.file)
+                or "\\" in args.file
+                or (os.name == "nt" and len(args.file) > 1 and args.file[1] == ":")
+            )
+            if path_like and os.path.isdir(args.file):
+                print(f"c4nary: error: --remote expects a Hugging Face repo id, but "
+                      f"{args.file} is a local directory; drop --remote to scan it.",
+                      file=sys.stderr)
+                return EXIT_ERROR
+        elif not os.path.isdir(args.file):
+            print(f"c4nary: error: repo target must be a local directory: "
+                  f"{args.file}", file=sys.stderr)
             return EXIT_ERROR
         if getattr(args, "bundle", False):
             print("note: repo bundle surfaces are already read; --bundle is implied.",

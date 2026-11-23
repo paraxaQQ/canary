@@ -1,8 +1,8 @@
 # A3 — repo-native ingest (GGUF-less)
 
-*Scoping document for A3, with A3a implementation notes. Target: the v1.0.0
-"global-on-surface" release, on `building` first. A3a (local repo) is implemented;
-A3b (remote repo) and A3c (safetensors header) are not.*
+*Scoping document for A3, with A3a/A3b implementation notes. Target: the v1.0.0
+"global-on-surface" release, on `building` first. A3a (local repo) and A3b
+(remote repo) are implemented; A3c (safetensors header) is not.*
 
 ## 1. Goal
 
@@ -44,7 +44,7 @@ repo file for a GGUF-anchored `--bundle` scan. A3 is therefore mostly:
 |---|---|
 | `scan <dir>` | repo (existing classification) |
 | `scan <dir> --as repo` | explicit repo |
-| `scan org/model --remote --as repo` | A3b; until then exit 3 with a clear message |
+| `scan org/model --remote --as repo` | A3b; fetch the fixed repo allowlist, no GGUF/weights |
 | `--bundle` in repo mode | implied by the target; accept and emit a `note:` that it is already on |
 | `--deep-tokenizer` in repo mode | accepted; `tokenizer.deep` is `partial` (no token types); no seam findings |
 | `--file` in repo mode | error 3: a specific GGUF filename has no meaning for a repo target |
@@ -192,11 +192,11 @@ Recommended rows:
 
 | id | repo state | reason |
 |---|---|---|
-| `repo.source` | examined / error | local directory or remote repo |
-| `repo.links` | examined / skipped | link containment; `skipped` lists each escape/broken/loop |
+| `repo.source` | examined / error | local directory or remote repo id |
+| `repo.links` | examined / skipped / absent | link containment; `skipped` lists each escape/broken/loop. Remote repo targets report `absent` with "local link containment does not apply to a remote repo; server-served bytes are audited as-is." |
 | `bundle.<file>` | examined / partial / unparseable / absent / skipped | reuse the existing per-file rows; `skipped` means a link was refused, not that the file was absent |
-| `chat_templates` | examined / absent | repo template sources; never TPL101 |
-| `tokenizer` | examined / absent | tokenizer.json present/usable |
+| `chat_templates` | examined / absent / skipped / unparseable / partial | repo template sources; never TPL101; unknown sources are not `absent` |
+| `tokenizer` | examined / absent / skipped / partial / unparseable | tokenizer.json usability and completeness |
 | `tokenizer.deep` | skipped / partial | skipped when not requested or no usable vocab; partial only when a vocab exists and token types are unavailable |
 | `metadata` | absent | no GGUF metadata |
 | `structure` | absent | no GGUF |
@@ -211,11 +211,12 @@ human run, not only visible to someone reading the JSON coverage array.
 
 ## 8. Slices
 
-- **A3a — local repo.** Context, `SpecialIds`, repo coverage, local reader,
-  template/config/tokenizer/card/NRM/RMT routing, CLI wiring, fixtures.
-  `--remote --as repo` still exits 3.
-- **A3b — remote repo.** HF file listing, fixed-name fetch, auth/caps/errors,
-  and an MCP decision (`scan_repo` tool vs extending `scan`).
+- **A3a — local repo (implemented).** Context, `SpecialIds`, repo coverage,
+  local reader, template/config/tokenizer/card/NRM/RMT routing, CLI wiring,
+  fixtures.
+- **A3b — remote repo (implemented).** HF file listing, fixed-name fetch,
+  auth/caps/errors, shared `scan_repo` used by both the CLI and the MCP `scan`
+  tool (`target_type="repo"`).
 - **A3c — optional.** Safetensors header → TOK002 and tensor-map consistency.
   Header only; no weight bytes.
 - **A4 — Ollama Modelfile.** Separate target type.
@@ -280,3 +281,34 @@ The local slice shipped with a few refinements discovered during verification:
    `repo.links` row, and emit `REP001` WARN. In-root links are scanned under the
    link's source name.
 7. **TOK002:** deferred to A3c (safetensors header only, never weights).
+
+## 12. A3b implementation notes
+
+- **One rule pass.** `repo.scan_repo(repo, ...)` is shared by the CLI and the MCP
+  `scan` tool, so the two surfaces cannot drift on findings, policy/baseline
+  handling, or coverage. `cli._scan_repo` is a thin loader/wrapper.
+- **Repo id validation.** `repo.normalize_repo_id` strips `hf://` and accepts
+  only a bare `name` or `org/name` (letters, digits, `.`, `-`, `_`; alphanumeric
+  ends). URLs, Windows/POSIX paths, backslashes, `..`, empty strings, and extra
+  path segments raise `RepoError`, which the CLI reports as
+  `c4nary: error: ...` with exit 3.
+- **Listing before fetching.** `RemoteRepo` lists the repo once through
+  `c4nary.remote._hf_list_files`. A 401/404/network failure is a `RemoteError`
+  (CLI exit 3). Names not in the listing are `absent` with no fetch. Listed
+  names are fetched through `c4nary.remote.fetch_repo_text` with the same caps
+  as the local reader (configs 4 MiB, `tokenizer.json` 48 MiB, README/Python
+  1 MiB). No GGUF is selected or fetched, and no weight bytes are read.
+- **Remote coverage.** `repo.source` names the remote repo id. `repo.links` is
+  `absent` -- "local link containment does not apply to a remote repo;
+  server-served bytes are audited as-is" -- and no `REP001` is emitted. A listed
+  file the server refuses (401/inaccessible) is `skipped`, never `absent`: the
+  file row and its summary (tokenizer, chat templates) say the content was not
+  read. Names absent from the listing are `absent` with no fetch. No lockout
+  state is invented.
+- **No GGUF template.** A repo target has no GGUF, so a GGUF file's embedded
+  template is not part of the target: `TPL030` does not run and `TPL101` is
+  never emitted. `template_sha256` stays `null`.
+- **MCP.** `run_scan(..., target_type="repo")` returns the same dict shape as
+  the GGUF path with `sha256` and `template_sha256` null. `manifest_path` and
+  `hf_filename` are rejected for a repo target; an unknown `target_type` is a
+  `ValueError`.

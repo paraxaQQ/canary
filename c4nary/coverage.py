@@ -312,15 +312,15 @@ def build_repo_coverage(
     policy_requested: bool = False,
     retiered_count: int = 0,
 ) -> Coverage:
-    """Coverage manifest for a local repo target (GGUF-less ingest)."""
+    """Coverage manifest for a repo target, local or remote (GGUF-less ingest)."""
     template_count = artifact.template_count
     parse_failures = sum(finding.rule_id == "TPL000" for finding in template_findings)
     if artifact.template_source_refused:
         template_surface = Surface(
             "chat_templates",
             "skipped",
-            "a repo chat template source was refused and not read; its template "
-            "status is unknown.",
+            "a repo chat template source was not read (refused or unavailable); "
+            "its template status is unknown.",
         )
     elif artifact.template_source_partial:
         template_surface = Surface(
@@ -446,12 +446,29 @@ def build_repo_coverage(
     )
 
     return Coverage.from_surfaces([
-        Surface(
-            "repo.source",
-            "examined",
-            f"local directory {artifact.display} was the scan root.",
+        (
+            Surface(
+                "repo.source",
+                "examined",
+                f"remote repository {artifact.display} was the scan target.",
+            )
+            if artifact.remote
+            else Surface(
+                "repo.source",
+                "examined",
+                f"local directory {artifact.display} was the scan root.",
+            )
         ),
-        _repo_links_surface(artifact.links),
+        (
+            Surface(
+                "repo.links",
+                "absent",
+                "local link containment does not apply to a remote repo; "
+                "server-served bytes are audited as-is.",
+            )
+            if artifact.remote
+            else _repo_links_surface(artifact.links)
+        ),
         template_surface,
         tokenizer_surface,
         deep_surface,

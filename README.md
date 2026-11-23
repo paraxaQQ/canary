@@ -140,13 +140,16 @@ false-positive classes found + fixed in the wild, and the evasion analysis:
      claim.
 
    The ten fixed repo-side files plus referenced Python are fetched with opt-in
-   `--bundle` for a GGUF scan. A local directory that contains no GGUF at all is
+   `--bundle` for a GGUF scan. A repository that contains no GGUF at all is
    its own target: `canary scan path\to\repo --as repo` reads those same
    surfaces (configs, tokenizer.json, templates, card, `auto_map` Python) and
    runs the CFG / NRM / DOC / TPL / TOK / RMT rules. GGUF-only checks are
    reported `absent`, and local symlinks whose target escapes the repo root are
-   refused and reported as `REP001` instead of being read. Remote repo ingest
-   (`--remote --as repo`) is not shipped yet and exits 3.
+   refused and reported as `REP001` instead of being read. The same audit runs
+   remotely with `canary scan org/model --remote --as repo`: it lists the repo
+   and fetches only those fixed files -- never a GGUF and never weights -- and
+   reports `repo.links` as `absent` because server-served bytes have no local
+   containment boundary.
 
 ## Validated against real models
 
@@ -235,6 +238,10 @@ canary scan model.gguf --deep-tokenizer   # materialize the vocab; TOK012/TOK015
 canary scan path\to\repo --as repo
 canary scan path\to\repo --as repo --deep-tokenizer   # tokenizer.deep is partial
 
+# A remote repo with no GGUF file (repo surfaces only; no weights):
+canary scan org/model --remote --as repo
+canary scan hf://org/model --remote --as repo --json
+
 canary diff a.gguf b.gguf              # structural diff of two models
 canary hash model.gguf --manifest m.json   # write a known-good manifest
 canary rules                           # list every rule id + description
@@ -255,6 +262,9 @@ canary scan --remote https://huggingface.co/org/repo/resolve/main/model.gguf --j
 # v2 deep surfaces (opt-in; more fetching):
 canary scan --remote <repo> --deep-tokenizer   # materialize the full vocab -> template<->tokenizer seam (TOK)
 canary scan --remote <repo> --bundle           # audit the 10-file bundle + auto_map Python -> DOC/CFG/NRM/TPL/RMT
+
+# A repo with no GGUF: fetch only its fixed repo files (never weights):
+canary scan org/model --remote --as repo
 ```
 
 Set `HF_TOKEN` in the environment for authenticated fetches (a much higher rate

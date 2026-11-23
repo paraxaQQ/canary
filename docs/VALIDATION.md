@@ -236,12 +236,18 @@ and `README.md` were not recorded by the eight-file harness, so their population
 are unknown. `auto_map` values live in file *contents*, which the inventory never
 stored, so the widened population cannot be derived offline at any confidence.
 
-**Local** repo-native GGUF-less ingest (`canary scan <dir> --as repo`) is shipped:
-it reads the same fixed repo surfaces plus `auto_map` Python with no GGUF anchor,
-runs the CFG / NRM / DOC / TPL / TOK / RMT rules, reports GGUF-only checks as
-`absent`, and refuses out-of-root symlinks as `REP001`. **Remote** repo ingest
-(`--remote --as repo`) is not shipped yet (A3b) and exits 3. The historical
-192,032-repository population remains scoped to repositories tagged `gguf`.
+**Repo-native GGUF-less ingest is shipped, local and remote**:
+`canary scan <dir> --as repo` and `canary scan org/model --remote --as repo`.
+Both read the same fixed repository surfaces plus `auto_map` Python with no GGUF
+anchor, run the CFG / NRM / DOC / TPL / TOK / RMT rules, and report GGUF-only
+checks as `absent`. The remote path lists the repository and fetches only those
+repo files -- it never selects a GGUF and never reads weight bytes. It refuses
+out-of-root symlinks as `REP001` locally; remotely it treats server-served bytes
+as authoritative, reports `repo.links` as `absent`, and emits no `REP001`. A
+listed-but-unreadable file is `skipped`, never `absent`; a 401/404/network
+failure on the repository itself exits 3. The same audit is exposed through MCP
+`scan(target_type="repo")`. The historical 192,032-repository population remains
+scoped to repositories tagged `gguf`.
 
 Policy severity overrides and baselines are report-time controls. The registry
 and default severities remain unchanged, so the frozen template-FAIL result
