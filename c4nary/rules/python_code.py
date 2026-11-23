@@ -773,6 +773,18 @@ def analyze_auto_map_python(
             )
             return None
         result = raw if isinstance(raw, ReadResult) else ReadResult(raw)
+        if result.skipped:
+            surfaces[surface_id] = Surface(
+                surface_id,
+                "skipped",
+                f"{filename} was not read: {result.skipped}",
+            )
+            findings.append(_rmt000(
+                filename,
+                f"{filename} was not read, so its import-time scope was not audited: "
+                f"{result.skipped}",
+            ))
+            return None
         analysis = _analyze_python_source(
             result.text,
             artifact=filename,

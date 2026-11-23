@@ -13,7 +13,7 @@ import re
 
 from ..parser import INT32_MAX, GGUFModel, MetaArray
 from ..report import Finding
-from ..vocab import Vocab, resolve_vocab
+from ..vocab import SpecialIds, Vocab, resolve_vocab
 from .registry import finding
 
 # Sentinels some exporters use for "unset" (uint32 -1 / int32 -1).
@@ -119,7 +119,11 @@ def _seam_findings(
 
 
 def analyze_tokenizer(
-    model: GGUFModel, deep: bool = False, *, vocab: Vocab | None = None
+    model: GGUFModel,
+    deep: bool = False,
+    *,
+    vocab: Vocab | None = None,
+    special_ids: SpecialIds | None = None,
 ) -> list[Finding]:
     findings: list[Finding] = []
     meta = model.metadata
@@ -128,14 +132,25 @@ def analyze_tokenizer(
 
     # TOK001 - special-token ids within the vocabulary.
     if v is not None:
-        for key in _SPECIAL_ID_KEYS:
-            tid = meta.get(f"tokenizer.ggml.{key}")
-            if isinstance(tid, int) and not isinstance(tid, bool) and tid not in _UNSET:
+        if special_ids is None:
+            for key in _SPECIAL_ID_KEYS:
+                tid = meta.get(f"tokenizer.ggml.{key}")
+                if isinstance(tid, int) and not isinstance(tid, bool) and tid not in _UNSET:
+                    if tid < 0 or tid >= v.length:
+                        findings.append(finding(
+                            "TOK001",
+                            f"{key}={tid} is outside the vocabulary [0, {v.length}).",
+                            location=f"tokenizer.ggml.{key}"))
+        else:
+            for name in ("bos", "eos", "unk", "pad"):
+                tid = special_ids.token(name)
+                if tid is None or tid in _UNSET:
+                    continue
                 if tid < 0 or tid >= v.length:
                     findings.append(finding(
                         "TOK001",
-                        f"{key}={tid} is outside the vocabulary [0, {v.length}).",
-                        location=f"tokenizer.ggml.{key}"))
+                        f"{name}_token_id={tid} is outside the vocabulary [0, {v.length}).",
+                        location=f"{special_ids.source}:{name}_token_id"))
 
     # TOK002 - vocabulary synchronized with embedding/output tensors. Skipped on
     # shards: the embedding/output tensor may live in a different shard file.
@@ -198,18 +213,31 @@ def analyze_tokenizer(
             location="tokenizer.ggml.tokens"))
 
     # TOK005 - add_bos/add_eos flags consistent with the ids they reference.
-    for flag, id_key in (("add_bos_token", "bos_token_id"),
-                         ("add_eos_token", "eos_token_id")):
-        if meta.get(f"tokenizer.ggml.{flag}") is True:
-            tid = meta.get(f"tokenizer.ggml.{id_key}")
-            ok = (isinstance(tid, int) and not isinstance(tid, bool)
-                  and tid not in _UNSET and tid >= 0
+    if special_ids is None:
+        for flag, id_key in (("add_bos_token", "bos_token_id"),
+                             ("add_eos_token", "eos_token_id")):
+            if meta.get(f"tokenizer.ggml.{flag}") is True:
+                tid = meta.get(f"tokenizer.ggml.{id_key}")
+                ok = (isinstance(tid, int) and not isinstance(tid, bool)
+                      and tid not in _UNSET and tid >= 0
+                      and (v is None or tid < v.length))
+                if not ok:
+                    findings.append(finding(
+                        "TOK005",
+                        f"{flag} is set but {id_key} is missing or out of range.",
+                        location=f"tokenizer.ggml.{flag}"))
+    else:
+        for name in ("bos", "eos"):
+            if not special_ids.add_flag(name):
+                continue
+            tid = special_ids.token(name)
+            ok = (tid is not None and tid not in _UNSET and tid >= 0
                   and (v is None or tid < v.length))
             if not ok:
                 findings.append(finding(
                     "TOK005",
-                    f"{flag} is set but {id_key} is missing or out of range.",
-                    location=f"tokenizer.ggml.{flag}"))
+                    f"add_{name}_token is set but {name}_token_id is missing or out of range.",
+                    location=f"{special_ids.source}:add_{name}_token"))
 
     findings += _seam_findings(model, deep, v)
     return findings

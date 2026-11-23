@@ -103,12 +103,19 @@ def test_cli_scans_a_gguf_unchanged(tmp_path, capsys):
     assert '"findings"' in capsys.readouterr().out
 
 
-@pytest.mark.parametrize("target", ["ollama", "repo"])
-def test_cli_reports_unimplemented_targets(tmp_path, capsys, target):
-    rc = cli.main(["scan", _gguf(tmp_path), "--as", target, "--json"])
+def test_cli_reports_ollama_unimplemented(tmp_path, capsys):
+    rc = cli.main(["scan", _gguf(tmp_path), "--as", "ollama", "--json"])
     assert rc == cli.EXIT_ERROR
     captured = capsys.readouterr()
-    assert f"{target} targets are not implemented" in captured.err
+    assert "ollama targets are not implemented" in captured.err
+    assert captured.out == ""
+
+
+def test_cli_repo_as_non_directory_exits_3(tmp_path, capsys):
+    rc = cli.main(["scan", _gguf(tmp_path), "--as", "repo", "--json"])
+    assert rc == cli.EXIT_ERROR
+    captured = capsys.readouterr()
+    assert "repo target must be a local directory" in captured.err
     assert captured.out == ""
 
 

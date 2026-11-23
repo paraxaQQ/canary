@@ -14,7 +14,7 @@ from collections.abc import Iterable
 from typing import TYPE_CHECKING
 
 from ..report import Finding
-from ..vocab import Vocab, resolve_vocab
+from ..vocab import SpecialIds, Vocab, resolve_vocab, special_ids_from_gguf
 from .registry import finding
 
 if TYPE_CHECKING:
@@ -25,8 +25,6 @@ _REFUSAL_SURFACES = frozenset({
     "sorry", "cannot", "can't", "refuse", "unable", "apologize", "apologies",
     "won't", "decline", "cannot.",
 })
-
-_STOP_ID_KEYS = ("eos_token_id", "eot_token_id", "eom_token_id")
 
 # refusal words in RECONSTRUCTED multi-token text -- catches split forms (can't, won't,
 # "I cannot") that no single vocab token spells.
@@ -75,12 +73,13 @@ def _bad_word_seqs(cfg: dict) -> list[list[int]]:
     return out
 
 
-def _stop_ids(model: GGUFModel, cfg: dict) -> set[int]:
-    ids: set[int] = set()
-    for k in _STOP_ID_KEYS:
-        v = model.metadata.get(f"tokenizer.ggml.{k}")
-        if isinstance(v, int) and not isinstance(v, bool):
-            ids.add(v)
+def _stop_ids(
+    model: GGUFModel,
+    cfg: dict,
+    special_ids: SpecialIds | None = None,
+) -> set[int]:
+    special = special_ids if special_ids is not None else special_ids_from_gguf(model)
+    ids = set(special.eos_ids)
     ids |= _flatten_ids(cfg.get("eos_token_id"))
     return ids
 
@@ -119,6 +118,7 @@ def analyze_config(
     include_auto_map: bool = True,
     source: str = "config.json",
     vocab: Vocab | None = None,
+    special_ids: SpecialIds | None = None,
 ) -> list[Finding]:
     """Audit a parsed generation_config.json / config.json dict against the model."""
     if not isinstance(cfg, dict):
@@ -235,7 +235,7 @@ def analyze_config(
         return findings
 
     # CFG001 -- stop-token suppression: the model can never emit end-of-turn.
-    muzzled = sorted(suppressed & _stop_ids(model, cfg))
+    muzzled = sorted(suppressed & _stop_ids(model, cfg, special_ids))
     if muzzled:
         findings.append(finding(
             "CFG001",

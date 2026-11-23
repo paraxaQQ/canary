@@ -236,8 +236,11 @@ and `README.md` were not recorded by the eight-file harness, so their population
 are unknown. `auto_map` values live in file *contents*, which the inventory never
 stored, so the widened population cannot be derived offline at any confidence.
 
-Repo-native GGUF-less ingest (`--repo`) is not shipped. Bundle and RMT analysis
-remain anchored to an explicit local or remote GGUF scan, and the historical
+**Local** repo-native GGUF-less ingest (`canary scan <dir> --as repo`) is shipped:
+it reads the same fixed repo surfaces plus `auto_map` Python with no GGUF anchor,
+runs the CFG / NRM / DOC / TPL / TOK / RMT rules, reports GGUF-only checks as
+`absent`, and refuses out-of-root symlinks as `REP001`. **Remote** repo ingest
+(`--remote --as repo`) is not shipped yet (A3b) and exits 3. The historical
 192,032-repository population remains scoped to repositories tagged `gguf`.
 
 Policy severity overrides and baselines are report-time controls. The registry

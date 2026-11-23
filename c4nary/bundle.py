@@ -11,11 +11,16 @@ from __future__ import annotations
 
 import dataclasses
 import json
-from dataclasses import dataclass
-from typing import TYPE_CHECKING, Callable
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Callable, Mapping
 
 from .coverage import Surface, SurfaceState
-from .vocab import Vocab, resolve_vocab
+from .vocab import (
+    SpecialIds,
+    Vocab,
+    resolve_vocab,
+    special_ids_from_gguf,
+)
 
 if TYPE_CHECKING:
     from .parser import GGUFModel
@@ -43,9 +48,24 @@ DEEP_TOK_KEYS = frozenset({"tokenizer.ggml.tokens", "tokenizer.ggml.token_type"}
 class ReadResult:
     text: str
     truncated: bool = False
+    # A reader that refuses a surface (an escaping symlink, an unreadable
+    # device, ...) sets this instead of returning None. ``None`` keeps its
+    # historical meaning: the file is absent.
+    skipped: str | None = None
+    # Set when the reader followed an in-root link to reach the content.
+    link: str | None = None
 
 
 Reader = Callable[..., "ReadResult | str | None"]
+
+
+@dataclass(frozen=True)
+class _RepoAnchor:
+    """Minimal duck-typed model for a repo target (no GGUF metadata or tensors)."""
+
+    metadata: Mapping[str, object] = field(default_factory=dict)
+    tensors: tuple = ()
+    vocab: Vocab | None = None
 
 
 # Windows resolves these regardless of extension, so `CON.py` is a device, not a file.
@@ -76,13 +96,20 @@ def _safe_bundle_name(name: str) -> str:
     return name
 
 
-def bundle_findings(
-    model: "GGUFModel",
+def repo_findings(
     read_text: Reader,
     *,
     vocab: Vocab | None = None,
+    special_ids: SpecialIds | None = None,
+    model: "GGUFModel | None" = None,
 ) -> "tuple[list[Finding], list[Surface]]":
-    """Run every repo-bundle rule against the files ``read_text`` can supply."""
+    """Run every repo-file rule against the files ``read_text`` can supply.
+
+    With ``model=None`` this is a repo target: the anchor carries no GGUF
+    metadata, so TPL030 cannot run and TPL101 is never emitted. With a parsed
+    GGUF model it is the historical ``--bundle`` pass, including template
+    divergence from the GGUF's own template.
+    """
     from .rules.config import analyze_auto_map, analyze_config
     from .rules.template import (
         analyze_card,
@@ -99,7 +126,12 @@ def bundle_findings(
     out: list[Finding] = []
     surfaces: dict[str, Surface] = {}
     auto_map_configs: list[tuple[str, dict]] = []
+    if model is None:
+        model = _RepoAnchor(vocab=vocab)
     vocab_value = resolve_vocab(model, vocab)
+    special = (
+        special_ids if special_ids is not None else special_ids_from_gguf(model)
+    )
 
     def _record(name: str, state: SurfaceState, reason: str) -> None:
         surfaces[name] = Surface(f"bundle.{name}", state, reason)
@@ -119,13 +151,20 @@ def bundle_findings(
             _record(name, "absent", f"{name} was absent or inaccessible.")
             return None
         result = raw if isinstance(raw, ReadResult) else ReadResult(raw)
+        if result.skipped:
+            _record(name, "skipped", f"{name} was not read: {result.skipped}")
+            return None
         _record(
             name,
             "partial" if result.truncated else "examined",
             (
                 f"{name} exceeded the reader cap and was truncated."
                 if result.truncated
-                else f"{name} was read and examined."
+                else (
+                    f"{name} resolved through a link to an in-root target and was read."
+                    if result.link
+                    else f"{name} was read and examined."
+                )
             ),
         )
         return result
@@ -160,6 +199,7 @@ def bundle_findings(
             include_auto_map=False,
             source=name,
             vocab=vocab_value,
+            special_ids=special,
         )
         if any(
             isinstance(value, str)
@@ -189,8 +229,9 @@ def bundle_findings(
     reachable = _post_processor_tokens(tokenizer_data)
     for token_name in ("bos_token", "eos_token"):
         add_name = f"add_{token_name}"
+        short = token_name.removesuffix("_token")
         enabled = ((isinstance(tcj, dict) and tcj.get(add_name) is True)
-                   or model.metadata.get(f"tokenizer.ggml.{add_name}") is True)
+                   or special.add_flag(short))
         if not enabled:
             continue
         value = tcj.get(token_name) if isinstance(tcj, dict) else None
@@ -198,7 +239,7 @@ def bundle_findings(
             value = special_tokens.get(token_name)
         reachable.update(_iter_token_strings(value))
 
-        token_id = model.metadata.get(f"tokenizer.ggml.{token_name}_id")
+        token_id = special.token(short)
         if (isinstance(token_id, int) and not isinstance(token_id, bool)
                 and vocab_value is not None and vocab_value.complete):
             surface = vocab_value.surface(token_id)
@@ -236,7 +277,6 @@ def bundle_findings(
         if raw is None or raw == "":
             return None
         return raw if isinstance(raw, ReadResult) else ReadResult(raw)
-
     rmt_findings, rmt_surfaces = analyze_auto_map_python(auto_map_configs, _read_python)
     out.extend(rmt_findings)
 
@@ -249,13 +289,13 @@ def bundle_findings(
     chat_template_jinja = (
         chat_template_result.text if chat_template_result is not None else None
     )
-    repo_findings = analyze_repo_templates(
+    template_findings = analyze_repo_templates(
         model,
         tcj if isinstance(tcj, dict) else None,
         chat_template_jinja,
         extra_templates,
     )
-    for result in repo_findings:
+    for result in template_findings:
         if result.rule_id != "TPL000" or result.artifact is None:
             continue
         state = "unparseable" if result.artifact == "chat_template.jinja" else "partial"
@@ -264,7 +304,7 @@ def bundle_findings(
             state,
             f"{result.artifact} contained a chat template that failed Jinja parsing.",
         )
-    out.extend(repo_findings)
+    out.extend(template_findings)
 
     readme = _read("README.md")
     if readme:
@@ -272,4 +312,25 @@ def bundle_findings(
     return out, sorted(
         [*surfaces.values(), *rmt_surfaces],
         key=lambda surface: surface.id,
+    )
+
+
+def bundle_findings(
+    model: "GGUFModel",
+    read_text: Reader,
+    *,
+    vocab: Vocab | None = None,
+    special_ids: SpecialIds | None = None,
+) -> "tuple[list[Finding], list[Surface]]":
+    """The GGUF-anchored repo-bundle pass (``--bundle`` / MCP scan).
+
+    Delegates the repo-file rules to :func:`repo_findings` and passes the parsed
+    model so template divergence (TPL030) is checked against the GGUF's own
+    embedded template. Output and ordering are unchanged from before the split.
+    """
+    return repo_findings(
+        read_text,
+        vocab=vocab,
+        special_ids=special_ids,
+        model=model,
     )

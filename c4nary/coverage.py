@@ -14,7 +14,14 @@ if TYPE_CHECKING:
 
 SurfaceState = Literal["examined", "absent", "skipped", "unparseable", "partial"]
 _STATES = frozenset({"examined", "absent", "skipped", "unparseable", "partial"})
-_NOTE_SURFACES = ("structure", "manifest", "tokenizer.deep", "bundle")
+_NOTE_SURFACES = (
+    "structure", "manifest", "tokenizer.deep", "bundle", "repo.links",
+    # Repo-only summaries: the GGUF path keeps its historical stderr exactly.
+    "chat_templates", "tokenizer", "metadata", "tensor_map.consistency",
+)
+_REPO_SUMMARY_SURFACES = frozenset({
+    "chat_templates", "tokenizer", "metadata", "tensor_map.consistency",
+})
 
 
 @dataclass(frozen=True)
@@ -53,6 +60,7 @@ class Coverage:
 
     def notes(self) -> list[str]:
         by_id = {surface.id: surface for surface in self.surfaces}
+        repo_mode = "repo.source" in by_id
         notes: list[str] = []
         for surface_id in _NOTE_SURFACES:
             surface = by_id.get(surface_id)
@@ -61,7 +69,14 @@ class Coverage:
             if surface_id == "structure" and surface.state == "examined":
                 continue
             if surface_id == "manifest" and surface.state in {"absent", "examined"}:
+                # A repo manifest is unsupported, not silently absent.
+                if not (repo_mode and surface.state == "absent"):
+                    continue
+            if surface_id == "repo.links" and surface.state == "examined":
                 continue
+            if surface_id in _REPO_SUMMARY_SURFACES:
+                if not repo_mode or surface.state == "examined":
+                    continue
             notes.append(surface.reason)
         return notes
 
@@ -252,5 +267,216 @@ def build_scan_coverage(
         policy_surface,
         bundle_surface,
         *unparseable_metadata,
+        *bundle_surfaces,
+    ])
+
+
+def _repo_links_surface(links) -> Surface:
+    refused = sorted(links, key=lambda link: (link.name, link.target, link.kind))
+    if not refused:
+        return Surface(
+            "repo.links",
+            "examined",
+            "no allowlisted repo file resolved outside the repository root.",
+        )
+
+    from .rules.repo import MAX_REP001_FINDINGS
+
+    escapes = [link for link in refused if link.kind == "escape"]
+    others = [link for link in refused if link.kind != "escape"]
+    described = [
+        *escapes[:MAX_REP001_FINDINGS],
+        *others,
+    ]
+    parts = [
+        f"{link.name} -> {link.target} ({link.reason})" for link in described
+    ]
+    omitted = max(0, len(escapes) - MAX_REP001_FINDINGS)
+    if omitted:
+        parts.append(f"{omitted} more escaping file(s) were not listed.")
+    return Surface(
+        "repo.links",
+        "skipped",
+        "repo link containment refused surface(s): " + "; ".join(parts),
+    )
+
+
+def build_repo_coverage(
+    artifact,
+    *,
+    template_findings: list["Finding"],
+    deep_tokenizer: bool,
+    bundle_surfaces: Iterable[Surface] = (),
+    baseline_requested: bool = False,
+    suppressed_count: int = 0,
+    policy_requested: bool = False,
+    retiered_count: int = 0,
+) -> Coverage:
+    """Coverage manifest for a local repo target (GGUF-less ingest)."""
+    template_count = artifact.template_count
+    parse_failures = sum(finding.rule_id == "TPL000" for finding in template_findings)
+    if artifact.template_source_refused:
+        template_surface = Surface(
+            "chat_templates",
+            "skipped",
+            "a repo chat template source was refused and not read; its template "
+            "status is unknown.",
+        )
+    elif artifact.template_source_partial:
+        template_surface = Surface(
+            "chat_templates",
+            "partial",
+            "a repo chat template source exceeded the reader cap; it was examined "
+            "partially.",
+        )
+    elif artifact.template_source_unparseable:
+        template_surface = Surface(
+            "chat_templates",
+            "unparseable",
+            "a repo chat template source was present but could not be parsed; its "
+            "template status is unknown.",
+        )
+    elif template_count == 0:
+        template_surface = Surface(
+            "chat_templates",
+            "absent",
+            "no repo chat template source was present.",
+        )
+    elif parse_failures == 0:
+        template_surface = Surface(
+            "chat_templates",
+            "examined",
+            f"all {template_count} repo chat template source(s) were parsed and examined.",
+        )
+    elif parse_failures >= template_count:
+        template_surface = Surface(
+            "chat_templates",
+            "unparseable",
+            f"all {template_count} repo chat template source(s) failed Jinja parsing.",
+        )
+    else:
+        template_surface = Surface(
+            "chat_templates",
+            "partial",
+            f"{parse_failures} of {template_count} repo chat template source(s) failed parsing.",
+        )
+
+    if artifact.tokenizer_truncated:
+        tokenizer_surface = Surface(
+            "tokenizer",
+            "partial",
+            "tokenizer.json exceeded the reader cap; no complete vocabulary was built.",
+        )
+    elif artifact.tokenizer_unparseable:
+        tokenizer_surface = Surface(
+            "tokenizer",
+            "unparseable",
+            "tokenizer.json was present but invalid JSON; no vocabulary was built.",
+        )
+    elif artifact.vocab is not None:
+        tokenizer_surface = Surface(
+            "tokenizer",
+            "examined",
+            f"tokenizer.json supplied a usable vocabulary of {artifact.vocab.length} token(s).",
+        )
+    else:
+        tokenizer_file = artifact.files.get("tokenizer.json")
+        if tokenizer_file is None:
+            tokenizer_surface = Surface(
+                "tokenizer", "absent", "tokenizer.json was absent.")
+        elif tokenizer_file.skipped:
+            tokenizer_surface = Surface(
+                "tokenizer",
+                "skipped",
+                f"tokenizer.json was not read: {tokenizer_file.skipped}",
+            )
+        elif tokenizer_file.truncated:
+            tokenizer_surface = Surface(
+                "tokenizer",
+                "partial",
+                "tokenizer.json exceeded the reader cap; no complete vocabulary was built.",
+            )
+        else:
+            tokenizer_surface = Surface(
+                "tokenizer",
+                "absent",
+                "tokenizer.json was present but declared no usable vocabulary.",
+            )
+
+    if not deep_tokenizer:
+        deep_surface = Surface(
+            "tokenizer.deep",
+            "skipped",
+            "deep tokenizer seam checks (TOK012/TOK015) not run; enable the deep tokenizer pass.",
+        )
+    elif artifact.vocab is None:
+        deep_surface = Surface(
+            "tokenizer.deep",
+            "skipped",
+            "deep tokenizer pass requested, but no usable tokenizer.json vocabulary was "
+            "available; TOK012/TOK015 were skipped.",
+        )
+    else:
+        deep_surface = Surface(
+            "tokenizer.deep",
+            "partial",
+            "deep tokenizer pass requested, but tokenizer.json carries no token-type split; "
+            "TOK012/TOK015 were skipped.",
+        )
+
+    baseline_surface = Surface(
+        "baseline",
+        "examined" if baseline_requested else "absent",
+        (
+            f"the supplied baseline suppressed {suppressed_count} finding(s); "
+            "all suppressed findings remain in the report."
+            if baseline_requested
+            else "no suppression baseline was supplied."
+        ),
+    )
+    policy_surface = Surface(
+        "policy",
+        "examined" if policy_requested else "absent",
+        (
+            f"the supplied policy re-tiered {retiered_count} finding(s) from their "
+            "registered severity."
+            if policy_requested
+            else "no severity policy was supplied; registered severities applied."
+        ),
+    )
+
+    return Coverage.from_surfaces([
+        Surface(
+            "repo.source",
+            "examined",
+            f"local directory {artifact.display} was the scan root.",
+        ),
+        _repo_links_surface(artifact.links),
+        template_surface,
+        tokenizer_surface,
+        deep_surface,
+        Surface(
+            "metadata",
+            "absent",
+            "a repo target has no GGUF metadata; MET001-MET016 were not applicable.",
+        ),
+        Surface(
+            "structure",
+            "absent",
+            "a repo target has no GGUF container; STR001-STR008 were not applicable.",
+        ),
+        Surface(
+            "tensor_map.consistency",
+            "absent",
+            "a repo target has no GGUF tensor map; tensor-map consistency checks "
+            "were not applicable.",
+        ),
+        Surface(
+            "manifest",
+            "absent",
+            "manifest comparison is not supported for a repo target in A3.",
+        ),
+        baseline_surface,
+        policy_surface,
         *bundle_surfaces,
     ])

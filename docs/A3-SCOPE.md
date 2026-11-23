@@ -1,7 +1,8 @@
 # A3 — repo-native ingest (GGUF-less)
 
-*Scoping document. No code is implemented by this document. Target: the v1.0.0
-"global-on-surface" release, on `building` first.*
+*Scoping document for A3, with A3a implementation notes. Target: the v1.0.0
+"global-on-surface" release, on `building` first. A3a (local repo) is implemented;
+A3b (remote repo) and A3c (safetensors header) are not.*
 
 ## 1. Goal
 
@@ -174,7 +175,7 @@ README.md
 | TOK003 | **absent** | GGUF parallel arrays (`scores`, `token_type`) |
 | TOK004 | **run** | `Vocab.max_surface_bytes`; repo value is UTF-8 byte length, documented |
 | TOK005 | **run** when add flags + ids resolve | `add_bos_token` / `add_eos_token` |
-| TOK012/TOK015 | **partial** | no CONTROL/USER_DEFINED split in tokenizer.json |
+| TOK012/TOK015 | **skipped / partial** | no CONTROL/USER_DEFINED split; partial only when a usable vocab exists and the deep pass is requested |
 | STR001–STR008 | **absent** | no GGUF structure |
 | INT001–INT006 | **absent** | no manifest / single file |
 | CFG001–CFG005 | **run** | repo vocab + special ids |
@@ -196,7 +197,7 @@ Recommended rows:
 | `bundle.<file>` | examined / partial / unparseable / absent / skipped | reuse the existing per-file rows; `skipped` means a link was refused, not that the file was absent |
 | `chat_templates` | examined / absent | repo template sources; never TPL101 |
 | `tokenizer` | examined / absent | tokenizer.json present/usable |
-| `tokenizer.deep` | partial | no token-type split |
+| `tokenizer.deep` | skipped / partial | skipped when not requested or no usable vocab; partial only when a vocab exists and token types are unavailable |
 | `metadata` | absent | no GGUF metadata |
 | `structure` | absent | no GGUF |
 | `tensor_map.consistency` | absent | no tensors |
@@ -246,7 +247,24 @@ human run, not only visible to someone reading the JSON coverage array.
   Phi-3-mini-4k-instruct, t5-small); review every FAIL, target 0 unexpected
   false-positive FAILs.
 
-## 10. Decisions (settled)
+## 10. A3a implementation notes
+
+The local slice shipped with a few refinements discovered during verification:
+
+- A refused link makes the **summary** row honest too: `tokenizer=skipped` and
+  `chat_templates=skipped`, not `absent`, when the underlying file was refused.
+- A present-but-invalid `tokenizer.json` is `tokenizer=unparseable`; a truncated
+  one is `tokenizer=partial` and never builds a complete vocabulary. CFG002/3
+  stay silent rather than analyzing a partial vocab.
+- `tokenizer.deep` is `skipped` when no usable vocabulary exists (including a
+  refused or truncated `tokenizer.json`); it is `partial` only when a vocab is
+  present but token types are unavailable.
+- A lone surrogate in a `tokenizer.json` string (valid JSON, invalid strict
+  UTF-8) is measured with `surrogatepass`; it must not abort the scan.
+- `REP001` is the only new rule. `canary rules --json` gains one row and the
+  rules digest changes; GGUF findings are unchanged.
+
+## 11. Decisions (settled)
 
 1. **`--bundle` in repo mode:** implied by the target; accept it and emit a
    `note:` that bundle surfaces are already being read.

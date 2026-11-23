@@ -98,13 +98,26 @@ def render_human(
     sha256: str,
     template_sha256: str | None,
     findings: list[Finding],
+    target: str = "gguf",
 ) -> str:
     findings = sort_findings(findings)
     counts = summarize(findings)
+    if sha256:
+        sha_line = sha256
+    elif target == "repo":
+        sha_line = "(repo scan - no single artifact hash)"
+    else:
+        sha_line = "(remote scan - whole-file hash unavailable)"
+    if template_sha256:
+        template_line = template_sha256
+    elif target == "repo":
+        template_line = "(repo scan - no single template hash)"
+    else:
+        template_line = "(none)"
     lines: list[str] = []
     lines.append(f"c4nary scan: {file}")
-    lines.append(f"  sha256          {sha256 or '(remote scan - whole-file hash unavailable)'}")
-    lines.append(f"  template_sha256 {template_sha256 or '(none)'}")
+    lines.append(f"  sha256          {sha_line}")
+    lines.append(f"  template_sha256 {template_line}")
     lines.append("")
     lines.append(verdict_line(findings))
     lines.append(

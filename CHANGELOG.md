@@ -23,8 +23,28 @@
   target is never inferred from a bare string -- only declared.
 - The GGUF path is unchanged by construction: GGUF magic is checked before any text
   heuristic, and an unrecognized target falls through to the GGUF ingest so the parser
-  still raises its own error for a missing or non-model file. `ollama` and `repo` targets
+  still raises its own error for a missing or non-model file. `ollama` targets still
   report that they are not implemented yet and exit 3.
+- Add the **local repo target**, `canary scan path\to\repo --as repo` (a directory already
+  classifies as `repo`). It reads the same allowlisted repo surfaces as `--bundle` --
+  `config.json` / `generation_config.json`, `tokenizer.json`, special-token files,
+  template sources, `README.md`, and `auto_map` Python -- and runs the CFG, NRM, DOC,
+  TPL, TOK (vocab/special ids), and RMT rules without a GGUF anchor. GGUF-only checks
+  (`MET*`, `STR*`, `TOK002`/`TOK003`, tensor-map and manifest comparison) are reported
+  `absent`; when the deep pass is requested, `TOK012`/`TOK015` report `partial` (or
+  `skipped` when no usable vocabulary exists) because `tokenizer.json` has no
+  token-type split.
+- Repo templates are scanned and source-tagged (`tokenizer_config.json`,
+  `chat_template.jinja`, `processor_config.json`); `TPL030` needs a GGUF template to
+  diverge from and does not run, and `TPL101` is never emitted -- coverage says
+  `chat_templates=absent` when no source exists.
+- Add `REP001` (WARN, local repo only): an allowlisted repo file is a symlink whose
+  resolved target escapes the repository root. The target is not read; the file surface
+  is `skipped` (never `absent`), a `repo.links` coverage row names the escape, and the
+  row is repeated on stderr. In-root links are followed and scanned under the link name;
+  broken/looping links and non-regular targets are `skipped` with a reason.
+- Remote repo ingest (`--remote --as repo`) is **not shipped yet** (A3b) and exits 3;
+  `--file` and `--manifest` remain single-GGUF concepts and are rejected for a repo.
 
 ### Detection
 - Extend the TPL023 structural shape set with two target-free forms, each requiring

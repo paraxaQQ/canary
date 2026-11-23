@@ -10,7 +10,7 @@ the same facts in a different shape (``model.vocab`` plus ``added_tokens``).
 never has to assume GGUF arrays. Its GGUF constructor wraps the parsed
 ``MetaArray`` values verbatim -- including the 64-element preview and the true
 length -- so it is a no-op for every existing scan. The ``tokenizer.json``
-constructor exists for the upcoming repo ingest and is not wired into the CLI.
+constructor backs the local repo target (``canary scan <dir> --as repo``).
 """
 
 from __future__ import annotations
@@ -156,7 +156,7 @@ def vocab_from_gguf(model: "GGUFModel") -> Vocab | None:
 
 
 def vocab_from_tokenizer_json(data: dict) -> Vocab | None:
-    """Build a vocabulary from a parsed ``tokenizer.json`` (not used by the CLI yet).
+    """Build a vocabulary from a parsed ``tokenizer.json`` (repo targets).
 
     ``model.vocab`` is either a ``{surface: id}`` mapping (BPE / WordPiece) or a
     list of ``[token, score]`` pairs (Unigram), where the index is the id. Ids
@@ -204,8 +204,10 @@ def vocab_from_tokenizer_json(data: dict) -> Vocab | None:
         return None
 
     length = max(values) + 1
+    # A JSON string may carry a lone surrogate (``"\ud800"``); strict UTF-8
+    # encoding would raise and turn a hostile tokenizer.json into a scan crash.
     max_surface_bytes = max(
-        (len(surface.encode("utf-8")) for surface in values.values()
+        (len(surface.encode("utf-8", "surrogatepass")) for surface in values.values()
          if isinstance(surface, str)),
         default=0,
     )
@@ -218,6 +220,148 @@ def vocab_from_tokenizer_json(data: dict) -> Vocab | None:
         types_complete=False,
         max_surface_bytes=max_surface_bytes,
         source="tokenizer.json:model.vocab",
+    )
+
+
+def vocab_surface_id(vocab: Vocab | None, surface: str) -> int | None:
+    """The smallest id whose surface is exactly ``surface``, or ``None``.
+
+    ``tokenizer.json`` declares special-token surfaces but not their ids; the
+    repo special-id constructor resolves a surface through the vocabulary. A
+    sparse vocabulary is walked over its present entries only, so a hostile
+    declared id cannot turn this into a long loop.
+    """
+    if vocab is None or not isinstance(surface, str):
+        return None
+    surfaces = vocab.surfaces
+    if isinstance(surfaces, SparseSurfaces):
+        matches = [tid for tid, value in surfaces._values.items() if value == surface]
+        return min(matches) if matches else None
+    for tid in range(min(len(surfaces), vocab.length)):
+        if surfaces[tid] == surface:
+            return tid
+    return None
+
+
+@dataclass(frozen=True)
+class SpecialIds:
+    """Read-only special-token ids from a GGUF file or a repo's tokenizer config.
+
+    ``eos`` is the single end-of-sequence id (TOK005), while ``eos_ids`` is the
+    stop set the decode-lever rules use. The GGUF constructor keeps all three of
+    eos/eot/eom there, exactly as CFG001 has always read them.
+    """
+
+    bos: int | None = None
+    eos: int | None = None
+    unk: int | None = None
+    pad: int | None = None
+    add_bos: bool = False
+    add_eos: bool = False
+    source: str = "gguf:tokenizer.ggml"
+    eos_ids: frozenset[int] = frozenset()
+
+    def token(self, name: str) -> int | None:
+        """The id for ``bos`` / ``eos`` / ``unk`` / ``pad``; unknown names are ``None``."""
+        if name not in {"bos", "eos", "unk", "pad"}:
+            return None
+        return getattr(self, name)
+
+    def add_flag(self, name: str) -> bool:
+        """The ``add_*`` flag for ``bos`` / ``eos``; everything else is ``False``."""
+        return getattr(self, f"add_{name}", False) is True
+
+
+def _special_id(value: object) -> int | None:
+    return value if isinstance(value, int) and not isinstance(value, bool) else None
+
+
+def special_ids_from_gguf(model) -> SpecialIds:
+    """Wrap ``tokenizer.ggml.*`` metadata verbatim, preserving current behaviour."""
+    metadata = getattr(model, "metadata", None)
+    if not isinstance(metadata, dict):
+        metadata = {}
+
+    def get(key: str) -> int | None:
+        return _special_id(metadata.get(f"tokenizer.ggml.{key}"))
+
+    # GGUF spells the unknown token key "unknown_token_id"; accept the short
+    # spelling too so a hand-built metadata dict is not silently ignored.
+    unk = get("unknown_token_id")
+    if unk is None:
+        unk = get("unk_token_id")
+    pad = get("padding_token_id")
+    if pad is None:
+        pad = get("pad_token_id")
+
+    eos_ids = frozenset(
+        value for value in (
+            get("eos_token_id"), get("eot_token_id"), get("eom_token_id"),
+        )
+        if value is not None
+    )
+    return SpecialIds(
+        bos=get("bos_token_id"),
+        eos=get("eos_token_id"),
+        unk=unk,
+        pad=pad,
+        add_bos=metadata.get("tokenizer.ggml.add_bos_token") is True,
+        add_eos=metadata.get("tokenizer.ggml.add_eos_token") is True,
+        source="gguf:tokenizer.ggml",
+        eos_ids=eos_ids,
+    )
+
+
+def _resolve_special_value(value: object, vocab: Vocab | None) -> int | None:
+    """Resolve a tokenizer-config token value: an int, ``{content, id}``, or a surface."""
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    if isinstance(value, dict):
+        explicit = _special_id(value.get("id"))
+        if explicit is not None:
+            return explicit
+        value = value.get("content")
+    if isinstance(value, str):
+        return vocab_surface_id(vocab, value)
+    return None
+
+
+def special_ids_from_tokenizer_config(
+    tokenizer_config: object,
+    special_tokens_map: object,
+    vocab: Vocab | None,
+) -> SpecialIds:
+    """Resolve BOS/EOS/UNK/PAD from ``tokenizer_config.json`` then the special map.
+
+    Each value may be an int, a ``{content, id}`` object, or a surface string;
+    a surface resolves through the repo vocabulary. Anything missing or
+    unresolvable stays ``None`` -- the rule layer must not guess an id.
+    """
+    config = tokenizer_config if isinstance(tokenizer_config, dict) else {}
+    specials = special_tokens_map if isinstance(special_tokens_map, dict) else {}
+
+    def pick(name: str) -> int | None:
+        for source in (config, specials):
+            value = source.get(name)
+            if value is None:
+                continue
+            resolved = _resolve_special_value(value, vocab)
+            if resolved is not None:
+                return resolved
+        return None
+
+    eos = pick("eos_token")
+    return SpecialIds(
+        bos=pick("bos_token"),
+        eos=eos,
+        unk=pick("unk_token"),
+        pad=pick("pad_token"),
+        add_bos=config.get("add_bos_token") is True,
+        add_eos=config.get("add_eos_token") is True,
+        source="tokenizer_config.json" if config else "special_tokens_map.json",
+        eos_ids=frozenset({eos}) if eos is not None else frozenset(),
     )
 
 

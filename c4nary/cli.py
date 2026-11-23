@@ -18,7 +18,7 @@ import sys
 from dataclasses import dataclass
 
 from . import __version__
-from .coverage import Coverage, Surface, build_scan_coverage
+from .coverage import Coverage, Surface, build_repo_coverage, build_scan_coverage
 from .ingest import TARGETS, classify_target
 from .integrity import (
     write_manifest,
@@ -103,9 +103,10 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument("--version", action="version", version=f"c4nary {__version__}")
     sub = p.add_subparsers(dest="command")
 
-    sp = sub.add_parser("scan", help="audit a GGUF file's template + metadata")
-    sp.add_argument("file", help="path to a .gguf file, or (with --remote) a "
-                                 "Hugging Face repo id or URL")
+    sp = sub.add_parser("scan", help="audit a GGUF file or a local repo")
+    sp.add_argument("file", help="path to a .gguf file, a local repo directory "
+                                 "(repo target), or (with --remote) a Hugging Face "
+                                 "repo id or URL")
     output = sp.add_mutually_exclusive_group()
     output.add_argument("--json", action="store_true", help="emit deterministic JSON")
     output.add_argument("--sarif", action="store_true", help="emit deterministic SARIF 2.1.0")
@@ -206,6 +207,7 @@ class _ScanResult:
     display: str
     file_sha: str | None
     template_sha: str | None
+    target: str = "gguf"
 
 
 def _scan_gguf(args, policy, baseline) -> _ScanResult:
@@ -272,6 +274,52 @@ def _scan_gguf(args, policy, baseline) -> _ScanResult:
                        model_template_sha256(model))
 
 
+def _scan_repo(args, policy, baseline) -> _ScanResult:
+    """The local repo ingest: read the allowlisted repo files and run every rule
+    that does not need GGUF metadata, tensors, or structure."""
+    from .bundle import repo_findings
+    from .repo import load_local_repo
+    from .rules.repo import analyze_repo_links
+
+    repo = load_local_repo(args.file)
+    vocab = repo.vocab
+    special_ids = repo.special_ids
+    deep = getattr(args, "deep_tokenizer", False)
+
+    findings, bundle_surfaces = repo_findings(
+        repo.read_text,
+        vocab=vocab,
+        special_ids=special_ids,
+    )
+    findings = list(findings)
+    findings += analyze_tokenizer(
+        repo.model,
+        deep=deep,
+        vocab=vocab,
+        special_ids=special_ids,
+    )
+    findings += analyze_repo_links(repo.links)
+
+    registered = [finding.severity for finding in findings]
+    findings = apply_report_policy(findings, policy, baseline)
+    suppressed_count = sum(finding.suppressed for finding in findings)
+    retiered_count = sum(
+        before != after.severity for before, after in zip(registered, findings)
+    )
+    artifact = repo.artifact()
+    coverage = build_repo_coverage(
+        artifact,
+        template_findings=findings,
+        deep_tokenizer=deep,
+        bundle_surfaces=bundle_surfaces,
+        baseline_requested=getattr(args, "baseline", None) is not None,
+        suppressed_count=suppressed_count,
+        policy_requested=getattr(args, "policy", None) is not None,
+        retiered_count=retiered_count,
+    )
+    return _ScanResult(findings, coverage, artifact.display, None, None, "repo")
+
+
 def _cmd_scan(args) -> int:
     policy = load_policy(getattr(args, "policy", None))
     baseline = load_baseline(getattr(args, "baseline", None))
@@ -282,12 +330,35 @@ def _cmd_scan(args) -> int:
         ollama=getattr(args, "ollama", False),
         override=getattr(args, "as_type", None),
     )
-    if target != "gguf":
-        print(f"c4nary: error: {target} targets are not implemented in c4nary "
+    if target == "ollama":
+        print(f"c4nary: error: ollama targets are not implemented in c4nary "
               f"{__version__}; GGUF scanning is unchanged.", file=sys.stderr)
         return EXIT_ERROR
 
-    result = _scan_gguf(args, policy, baseline)
+    if target == "repo":
+        if args.remote:
+            print("c4nary: error: remote repo ingest is not implemented yet (A3b).",
+                  file=sys.stderr)
+            return EXIT_ERROR
+        if not os.path.isdir(args.file):
+            print(f"c4nary: error: repo target must be a local directory: "
+                  f"{args.file}", file=sys.stderr)
+            return EXIT_ERROR
+        if getattr(args, "hf_filename", None):
+            print("c4nary: error: --file names a single GGUF and has no meaning for "
+                  "a repo target.", file=sys.stderr)
+            return EXIT_ERROR
+        if getattr(args, "manifest", None):
+            print("c4nary: error: --manifest compares a single GGUF and is not "
+                  "supported for a repo target.", file=sys.stderr)
+            return EXIT_ERROR
+        if getattr(args, "bundle", False):
+            print("note: repo bundle surfaces are already read; --bundle is implied.",
+                  file=sys.stderr)
+        result = _scan_repo(args, policy, baseline)
+    else:
+        result = _scan_gguf(args, policy, baseline)
+
     findings, coverage = result.findings, result.coverage
     for note in coverage.notes():
         print(f"note: {note}", file=sys.stderr)
@@ -303,7 +374,8 @@ def _cmd_scan(args) -> int:
     else:
         print(render_human(
             file=result.display, sha256=result.file_sha,
-            template_sha256=result.template_sha, findings=findings))
+            template_sha256=result.template_sha, findings=findings,
+            target=result.target))
 
     counts = summarize(findings)
     fail_on = getattr(args, "fail_on", None) or policy.fail_on

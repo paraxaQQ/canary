@@ -283,6 +283,11 @@ _RULES: tuple[Rule, ...] = (
          "Custom Python decodes base/hex-like content and passes the result to an execution "
          "sink during import-time evaluation. This composition hides the executed source; "
          "manual review is required."),
+    # ---- Repo integrity (REP, local repo targets only) ------------------- #
+    Rule("REP001", WARN, "Repo file symlink escapes the repository root",
+         "An allowlisted repo file is a symlink whose resolved target is outside the "
+         "repository root. The target was not read, so the scan is incomplete for that "
+         "surface; manual review is required."),
 )
 
 _BY_ID: dict[str, Rule] = {r.rule_id: r for r in _RULES}
