@@ -240,11 +240,17 @@ stored, so the widened population cannot be derived offline at any confidence.
 `canary scan <dir> --as repo` and `canary scan org/model --remote --as repo`.
 Both read the same fixed repository surfaces plus `auto_map` Python with no GGUF
 anchor, run the CFG / NRM / DOC / TPL / TOK / RMT rules, and report GGUF-only
-checks as `absent`. The remote path lists the repository and fetches only those
-repo files -- it never selects a GGUF and never reads weight bytes. It refuses
+metadata and structural checks as `absent`. They also parse top-level safetensors
+**headers only** (8-byte prefix + header JSON, 32 MiB per header, 64 MiB total,
+32 files) so TOK002 can compare the token vocabulary against the model's real
+embedding/output axis. No tensor data or weight bytes are read locally, and the
+remote path requests only the prefix/header byte ranges: a server that ignores a
+nonzero `Range` is refused rather than streamed. The remote path lists the
+repository and fetches only those repo files and header ranges -- it never
+selects a GGUF and never reads weight bytes. It refuses
 out-of-root symlinks as `REP001` locally; remotely it treats server-served bytes
 as authoritative, reports `repo.links` as `absent`, and emits no `REP001`. A
-listed-but-unreadable file is `skipped`, never `absent`; a 401/404/network
+listed-but-unreadable file or header is `skipped`, never `absent`; a 401/404/network
 failure on the repository itself exits 3. The same audit is exposed through MCP
 `scan(target_type="repo")`. The historical 192,032-repository population remains
 scoped to repositories tagged `gguf`.

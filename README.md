@@ -143,13 +143,16 @@ false-positive classes found + fixed in the wild, and the evasion analysis:
    `--bundle` for a GGUF scan. A repository that contains no GGUF at all is
    its own target: `canary scan path\to\repo --as repo` reads those same
    surfaces (configs, tokenizer.json, templates, card, `auto_map` Python) and
-   runs the CFG / NRM / DOC / TPL / TOK / RMT rules. GGUF-only checks are
-   reported `absent`, and local symlinks whose target escapes the repo root are
-   refused and reported as `REP001` instead of being read. The same audit runs
-   remotely with `canary scan org/model --remote --as repo`: it lists the repo
-   and fetches only those fixed files -- never a GGUF and never weights -- and
-   reports `repo.links` as `absent` because server-served bytes have no local
-   containment boundary.
+   runs the CFG / NRM / DOC / TPL / TOK / RMT rules. It also reads top-level
+   safetensors **headers only** — never tensor data or weights — so the token
+   vocabulary can be checked against the model's real embedding/output axis
+   (`TOK002`). GGUF-only metadata and structural checks are reported `absent`,
+   and local symlinks whose target escapes the repo root are refused and
+   reported as `REP001` instead of being read. The same audit runs remotely with
+   `canary scan org/model --remote --as repo`: it lists the repo and fetches
+   only those fixed files plus the safetensors header byte ranges — never a GGUF
+   and never weight bytes — and reports `repo.links` as `absent` because
+   server-served bytes have no local containment boundary.
 
 ## Validated against real models
 

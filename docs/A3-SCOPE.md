@@ -1,8 +1,8 @@
 # A3 — repo-native ingest (GGUF-less)
 
-*Scoping document for A3, with A3a/A3b implementation notes. Target: the v1.0.0
-"global-on-surface" release, on `building` first. A3a (local repo) and A3b
-(remote repo) are implemented; A3c (safetensors header) is not.*
+*Scoping document for A3, with A3a/A3b/A3c implementation notes. Target: the v1.0.0
+"global-on-surface" release, on `building` first. A3a (local repo), A3b (remote
+repo), and A3c (safetensors header) are implemented.*
 
 ## 1. Goal
 
@@ -19,8 +19,9 @@ scan. Rules that need GGUF metadata, tensors, or structure are reported as
 
 ### Non-goals
 
-- No weights. No safetensors tensor data in A3a/A3b. A safetensors *header* check
-  (TOK002) is A3c, if we want it at all.
+- No weights. A3a/A3b read repo surfaces only. A3c reads a safetensors **header**
+  (prefix + JSON) to run the existing TOK002 axis check; it never reads tensor data
+  or weight bytes.
 - No new *behavioral* detection rules. A3 adds one repo-integrity WARN,
   `REP001`, for a repo file whose symlink target escapes the repository root.
 - No Ollama Modelfile ingest (A4).
@@ -171,7 +172,7 @@ README.md
 | MET005 | **absent** | GGUF architecture/quantisation |
 | MET020/MET021 | **run** on config strings | via `analyze_config`'s text scan |
 | TOK001 | **run** when vocab + special ids resolve | id range against `vocab.length` |
-| TOK002 | **absent** | needs tensor axes; A3c safetensors header |
+| TOK002 | **run** when a top-level safetensors header yields a candidate axis | A3c: header only, no weights; `absent`/`partial` when no usable tensor map |
 | TOK003 | **absent** | GGUF parallel arrays (`scores`, `token_type`) |
 | TOK004 | **run** | `Vocab.max_surface_bytes`; repo value is UTF-8 byte length, documented |
 | TOK005 | **run** when add flags + ids resolve | `add_bos_token` / `add_eos_token` |
@@ -200,7 +201,8 @@ Recommended rows:
 | `tokenizer.deep` | skipped / partial | skipped when not requested or no usable vocab; partial only when a vocab exists and token types are unavailable |
 | `metadata` | absent | no GGUF metadata |
 | `structure` | absent | no GGUF |
-| `tensor_map.consistency` | absent | no tensors |
+| `safetensors.<name>` | examined / partial / unparseable / skipped | one row per top-level header; absent when no top-level file exists |
+| `tensor_map.consistency` | examined / partial / skipped / unparseable / absent | safetensors header axes; `examined` only when headers parsed, a candidate embedding/output axis was found, and a usable vocab was compared |
 | `manifest` | absent | not supported for a repo in A3 |
 | `policy` / `baseline` | as today | report-time controls |
 
@@ -217,8 +219,9 @@ human run, not only visible to someone reading the JSON coverage array.
 - **A3b — remote repo (implemented).** HF file listing, fixed-name fetch,
   auth/caps/errors, shared `scan_repo` used by both the CLI and the MCP `scan`
   tool (`target_type="repo"`).
-- **A3c — optional.** Safetensors header → TOK002 and tensor-map consistency.
-  Header only; no weight bytes.
+- **A3c — safetensors header (implemented).** Top-level safetensors headers →
+  TOK002 and tensor-map consistency. Header only; no weight bytes, locally or
+  remotely.
 - **A4 — Ollama Modelfile.** Separate target type.
 
 ## 9. Tests and acceptance
@@ -312,3 +315,46 @@ The local slice shipped with a few refinements discovered during verification:
   the GGUF path with `sha256` and `template_sha256` null. `manifest_path` and
   `hf_filename` are rejected for a repo target; an unknown `target_type` is a
   `ValueError`.
+
+## 13. A3c implementation notes (safetensors header)
+
+- **Header only.** `c4nary/safetensors.py` reads the 8-byte little-endian length
+  and the following UTF-8 JSON. Local: the file is opened only after the same
+  `os.path.realpath` in-root containment check as `_read_path`, then exactly
+  `8` and `N` bytes are requested. Remote: `remote.fetch_remote_range` issues
+  `Range: bytes=...` for the prefix and header; a nonzero start **requires** a
+  `206`, and a `200` is closed without reading the body, so an ignored range can
+  never become a weights download. The streamed body cap is `length + 1`, and
+  only the requested bytes are returned.
+- **Top-level shard scope.** One `scandir` of the local root or the existing
+  remote listing; only non-hidden, separator-free `*.safetensors` names. A
+  sharded model (`model-00001-of-00002.safetensors`, ...) is parsed shard by
+  shard. No recursive walk and no `model.safetensors.index.json` dependency.
+- **Caps.** 32 MiB per header, 64 MiB of header JSON across a repo, and at most
+  32 top-level files. Over a bound is `partial` and the bytes are not read;
+  a malformed length/JSON/shape is `unparseable`; a refused or unfetchable
+  shard is `skipped`.
+- **Candidate axes.** Embedding suffixes `embed_tokens.weight`, `wte.weight`,
+  `tok_embeddings.weight`, `token_embd.weight`, `shared.weight`,
+  `word_embeddings.weight`; output suffix `lm_head.weight` and exact
+  `output.weight`. The sorted mapping is what TOK002 compares; a repo with no
+  candidate reports `tensor_map.consistency=partial`, not `absent`.
+- **TOK002 reuse.** `analyze_tokenizer(..., tensor_axes=...)` is keyword-only.
+  `None` is byte-for-byte the historical GGUF path; a supplied mapping (including
+  an empty one) replaces the tensor-map lookup, so GGUF output and
+  `rules_bundle_sha256` do not move. `scan_repo` passes `repo.tensor_axes`; the
+  rule still needs a usable vocabulary.
+- **Coverage.** Each header gets `safetensors.<name>` (`examined` / `partial` /
+  `unparseable` / `skipped`) with its reason. `tensor_map.consistency` is
+  `absent` only when no top-level file exists; `examined` only when every header
+  parsed, a candidate axis exists, and a `tokenizer.json` vocabulary was
+  compared; otherwise `partial` / `skipped` / `unparseable`. The non-examined
+  row is in the repo note set. `metadata` and `structure` stay `absent`.
+- **Links and MCP.** A local safetensors symlink that escapes the root records a
+  `LinkRecord`, emits `REP001`, and is `skipped`; its target bytes are never
+  read. Remote reads have no containment boundary: `repo.links` stays `absent`
+  and no `REP001` is emitted. `scan_repo` is shared, so the MCP
+  `target_type="repo"` surface gains the same coverage and TOK002 findings with
+  no signature change.
+- **No new rule, no version bump, no PyPI.** The 19-case GGUF CLI baseline stays
+  byte-identical.

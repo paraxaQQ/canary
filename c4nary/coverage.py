@@ -301,6 +301,82 @@ def _repo_links_surface(links) -> Surface:
     )
 
 
+def _tensor_map_surface(artifact) -> Surface:
+    """Honest tensor-map row for a repo: absent, or header/axis state."""
+    headers = artifact.safetensors
+    if not headers:
+        # Keep the historical phrase (GGUF-only checks not applicable) while
+        # naming the concrete reason a repo scan has no tensor axis at all.
+        return Surface(
+            "tensor_map.consistency",
+            "absent",
+            "a repo target has no GGUF tensor map; no top-level .safetensors "
+            "file was present.",
+        )
+
+    state = artifact.safetensors_state
+    count = len(headers)
+    if state == "skipped":
+        return Surface(
+            "tensor_map.consistency",
+            "skipped",
+            f"{count} top-level safetensors header(s) were not read; "
+            f"tensor-map consistency is unknown. {artifact.safetensors_reason}",
+        )
+    if state == "unparseable":
+        return Surface(
+            "tensor_map.consistency",
+            "unparseable",
+            f"{artifact.safetensors_reason} TOK002 needs a tensor axis and none "
+            f"could be parsed.",
+        )
+    if state == "partial":
+        return Surface(
+            "tensor_map.consistency",
+            "partial",
+            f"{artifact.safetensors_reason} Only the axes that were parsed could "
+            f"be checked.",
+        )
+
+    # Every header parsed. The axis check still needs a candidate and a vocab.
+    if not artifact.tensor_axes:
+        return Surface(
+            "tensor_map.consistency",
+            "partial",
+            f"all {count} top-level safetensors header(s) were parsed, but no "
+            f"embedding or output tensor axis was found; TOK002 was not "
+            f"applicable.",
+        )
+    if artifact.vocab is None:
+        return Surface(
+            "tensor_map.consistency",
+            "partial",
+            f"all {count} top-level safetensors header(s) were parsed, but no "
+            f"usable tokenizer.json vocabulary exists to compare against the "
+            f"tensor axes.",
+        )
+    return Surface(
+        "tensor_map.consistency",
+        "examined",
+        f"all {count} top-level safetensors header(s) were parsed and "
+        f"{len(artifact.tensor_axes)} embedding/output tensor axis/axes were "
+        f"compared against the {artifact.vocab.length}-token vocabulary; only "
+        f"header bytes were read.",
+    )
+
+
+def _safetensors_surfaces(artifact) -> list[Surface]:
+    """One row per top-level header. An absent header adds no per-file row."""
+    return [
+        Surface(
+            f"safetensors.{header.name}",
+            header.state,
+            header.reason,
+        )
+        for header in artifact.safetensors
+    ]
+
+
 def build_repo_coverage(
     artifact,
     *,
@@ -482,12 +558,7 @@ def build_repo_coverage(
             "absent",
             "a repo target has no GGUF container; STR001-STR008 were not applicable.",
         ),
-        Surface(
-            "tensor_map.consistency",
-            "absent",
-            "a repo target has no GGUF tensor map; tensor-map consistency checks "
-            "were not applicable.",
-        ),
+        _tensor_map_surface(artifact),
         Surface(
             "manifest",
             "absent",
@@ -495,5 +566,6 @@ def build_repo_coverage(
         ),
         baseline_surface,
         policy_surface,
+        *_safetensors_surfaces(artifact),
         *bundle_surfaces,
     ])

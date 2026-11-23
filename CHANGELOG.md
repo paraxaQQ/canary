@@ -62,6 +62,22 @@
 - `--file` and `--manifest` remain single-GGUF concepts and are rejected for a repo.
   A3b adds no rules and changes no GGUF output; it lands on `building` with no
   version bump and no PyPI release.
+- Repo scans now parse **safetensors headers only** and run the existing `TOK002`
+  vocabulary-vs-embedding/output-axis check against the model's real tensor shapes.
+  A local `scan <dir> --as repo` reads the 8-byte prefix and header JSON of each
+  top-level `*.safetensors`; `scan org/model --remote --as repo` requests exactly
+  those two byte ranges. Tensor data and weights are never read or fetched: a server
+  that ignores a nonzero `Range` is refused rather than streamed. No new CLI flag,
+  rule, version bump, or PyPI release. `TOK002` is unchanged for GGUF.
+- Safetensors headers are bounded (32 MiB per header, 64 MiB total, 32 top-level
+  files) and validated (`N > 0`, `8 + N` within the file/returned range, JSON object,
+  integer shape list). Coverage gains a `safetensors.<name>` row per header
+  (`examined` / `partial` / `unparseable` / `skipped`) and an honest
+  `tensor_map.consistency` state: `absent` when no top-level file exists, `examined`
+  only when headers parsed, a candidate embedding/output axis was found, and a
+  usable `tokenizer.json` vocabulary was compared, otherwise `partial` / `skipped` /
+  `unparseable`. Symlink escapes still emit `REP001` and are `skipped`, never
+  `absent`; `repo.links` behavior is unchanged.
 
 ### Detection
 - Extend the TPL023 structural shape set with two target-free forms, each requiring

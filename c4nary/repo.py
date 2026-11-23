@@ -36,6 +36,18 @@ from pathlib import Path
 from typing import Mapping
 
 from .bundle import BUNDLE_FILES, ReadResult, _safe_bundle_name
+from .safetensors import (
+    MAX_HEADER_FILES,
+    MAX_TOTAL_HEADER_BYTES,
+    PREFIX_BYTES,
+    SafetensorsHeader,
+    candidate_axes,
+    header_length,
+    is_safetensors_name,
+    merge_shapes,
+    read_header,
+    read_header_from_stream,
+)
 from .vocab import (
     SpecialIds,
     Vocab,
@@ -108,6 +120,11 @@ class RepoArtifact:
     template_source_unparseable: bool = False
     template_source_partial: bool = False
     remote: bool = False
+    safetensors: tuple[SafetensorsHeader, ...] = ()
+    safetensors_state: str = "absent"
+    safetensors_reason: str = "no top-level .safetensors file was present."
+    safetensors_capped: bool = False
+    tensor_axes: Mapping[str, tuple[int, ...]] = field(default_factory=dict)
 
 
 def _within(root: str, path: str) -> bool:
@@ -118,6 +135,49 @@ def _within(root: str, path: str) -> bool:
         return os.path.commonpath([root_key, path_key]) == root_key
     except ValueError:  # different drives
         return False
+
+
+def _safetensors_summary(
+    headers: tuple[SafetensorsHeader, ...] | list[SafetensorsHeader],
+    *,
+    capped: bool,
+) -> tuple[str, str]:
+    """Aggregate per-header states into one honest repo-level state/reason."""
+    count = len(headers)
+    skipped = [header.name for header in headers if header.state == "skipped"]
+    unparseable = [header.name for header in headers
+                   if header.state == "unparseable"]
+    partial = [header.name for header in headers if header.state == "partial"]
+    examined = [header.name for header in headers if header.state == "examined"]
+
+    if skipped:
+        return "skipped", (
+            f"{len(skipped)} of {count} top-level safetensors header(s) could not "
+            f"be read: {', '.join(sorted(skipped))}."
+        )
+    if not examined and not partial:
+        return "unparseable", (
+            f"all {count} top-level safetensors header(s) were unparseable."
+        )
+    if partial or unparseable or capped:
+        details: list[str] = []
+        if partial:
+            details.append(f"{len(partial)} were truncated or over a bound")
+        if unparseable:
+            details.append(f"{len(unparseable)} were unparseable")
+        if capped:
+            details.append(
+                f"more than {MAX_HEADER_FILES} top-level .safetensors files were "
+                f"present and only the first {MAX_HEADER_FILES} were examined"
+            )
+        return "partial", (
+            f"{len(examined)} of {count} top-level safetensors header(s) were "
+            f"parsed; " + "; ".join(details) + "."
+        )
+    return "examined", (
+        f"all {count} top-level safetensors header(s) were parsed; only header "
+        f"bytes were read."
+    )
 
 
 class _RepoReader:
@@ -144,6 +204,11 @@ class _RepoReader:
         self._template_source_refused = False
         self._template_source_unparseable = False
         self._template_source_partial = False
+        self._safetensors: tuple[SafetensorsHeader, ...] = ()
+        self._safetensors_state = "absent"
+        self._safetensors_reason = "no top-level .safetensors file was present."
+        self._safetensors_capped = False
+        self._tensor_axes: dict[str, tuple[int, ...]] = {}
 
     @property
     def files(self) -> Mapping[str, ReadResult]:
@@ -234,6 +299,57 @@ class _RepoReader:
                 "chat_template.jinja",
             )
         )
+        self._prepare_safetensors()
+
+    def safetensors_names(self) -> list[str]:
+        """Top-level ``*.safetensors`` names, sorted and capped. No walk."""
+        return []
+
+    def read_safetensors_header(
+        self,
+        name: str,
+        *,
+        budget: int | None = None,
+    ) -> SafetensorsHeader:
+        raise NotImplementedError
+
+    def _prepare_safetensors(self) -> None:
+        """Read every top-level header once; never the tensor data."""
+        names = self.safetensors_names()
+        if not names:
+            return
+        headers: list[SafetensorsHeader] = []
+        budget = MAX_TOTAL_HEADER_BYTES
+        for name in names:
+            header = self.read_safetensors_header(name, budget=budget)
+            headers.append(header)
+            # The total cap counts header JSON bytes, not the 8-byte prefixes.
+            budget = max(0, budget - max(0, header.consumed - PREFIX_BYTES))
+        self._safetensors = tuple(headers)
+        self._tensor_axes = candidate_axes(merge_shapes(headers))
+        self._safetensors_state, self._safetensors_reason = _safetensors_summary(
+            headers, capped=self._safetensors_capped
+        )
+
+    @property
+    def safetensors_headers(self) -> tuple[SafetensorsHeader, ...]:
+        self._prepare()
+        return self._safetensors
+
+    @property
+    def safetensors_state(self) -> str:
+        self._prepare()
+        return self._safetensors_state
+
+    @property
+    def safetensors_reason(self) -> str:
+        self._prepare()
+        return self._safetensors_reason
+
+    @property
+    def tensor_axes(self) -> Mapping[str, tuple[int, ...]]:
+        self._prepare()
+        return dict(self._tensor_axes)
 
     @property
     def vocab(self) -> Vocab | None:
@@ -273,6 +389,11 @@ class _RepoReader:
             template_source_unparseable=self._template_source_unparseable,
             template_source_partial=self._template_source_partial,
             remote=self.remote,
+            safetensors=self._safetensors,
+            safetensors_state=self._safetensors_state,
+            safetensors_reason=self._safetensors_reason,
+            safetensors_capped=self._safetensors_capped,
+            tensor_axes=dict(self._tensor_axes),
         )
 
 
@@ -383,6 +504,95 @@ class LocalRepo(_RepoReader):
             link=real if resolved_through_link else None,
         )
 
+    def safetensors_names(self) -> list[str]:
+        """Sorted top-level ``*.safetensors`` names under the root, cap 32.
+
+        One ``scandir`` of the root -- no recursive walk, and no ``.safetensors``
+        buried in a subdirectory (a sharded model names each shard at top level).
+        """
+        names: list[str] = []
+        try:
+            with os.scandir(self.root) as entries:
+                for entry in entries:
+                    if is_safetensors_name(entry.name):
+                        names.append(entry.name)
+        except OSError:
+            self._safetensors_capped = False
+            return []
+        names.sort()
+        self._safetensors_capped = len(names) > MAX_HEADER_FILES
+        return names[:MAX_HEADER_FILES]
+
+    def read_safetensors_header(
+        self,
+        name: str,
+        *,
+        budget: int | None = None,
+    ) -> SafetensorsHeader:
+        """Read one local header under the same containment rule as ``_read_path``.
+
+        An out-of-root, broken, or non-regular target records a :class:`LinkRecord`
+        (``REP001``) and returns ``skipped``; it is never opened. The file is
+        opened only after containment passes, and exactly ``8`` + ``N`` bytes are
+        requested from it.
+        """
+        if not is_safetensors_name(name):
+            raise ValueError(f"unsafe safetensors filename: {name!r}")
+
+        candidate = os.path.abspath(os.path.join(self.root, name))
+        try:
+            real = os.path.realpath(candidate)
+        except OSError as exc:  # pragma: no cover - platform-specific guard
+            reason = f"path resolution failed: {exc}"
+            self._record_link(LinkRecord(name, candidate, _BROKEN, reason))
+            return SafetensorsHeader(name, {}, "skipped", reason)
+
+        if not _within(self.root, real):
+            reason = "resolved target is outside the repository root"
+            self._record_link(LinkRecord(name, real, _ESCAPE, reason))
+            return SafetensorsHeader(
+                name,
+                {},
+                "skipped",
+                f"the symlink target {real!r} is outside the repository root",
+            )
+
+        try:
+            info = os.stat(candidate)
+        except OSError as exc:
+            if os.path.islink(candidate) or os.path.normcase(
+                os.path.normpath(real)
+            ) != os.path.normcase(os.path.normpath(candidate)):
+                reason = f"link could not be resolved: {exc.strerror or exc}"
+                self._record_link(LinkRecord(name, real, _BROKEN, reason))
+                return SafetensorsHeader(name, {}, "skipped", reason)
+            return SafetensorsHeader(
+                name,
+                {},
+                "skipped",
+                "the file disappeared before its header could be read",
+            )
+
+        if not stat.S_ISREG(info.st_mode):
+            reason = "resolved target is not a regular file"
+            self._record_link(LinkRecord(name, real, _NOT_REGULAR, reason))
+            return SafetensorsHeader(name, {}, "skipped", reason)
+
+        try:
+            with open(real, "rb") as fh:
+                info = os.fstat(fh.fileno())
+                if not stat.S_ISREG(info.st_mode):
+                    reason = "resolved target is not a regular file"
+                    self._record_link(LinkRecord(name, real, _NOT_REGULAR, reason))
+                    return SafetensorsHeader(name, {}, "skipped", reason)
+                return read_header_from_stream(
+                    name, fh, info.st_size, budget=budget
+                )
+        except OSError as exc:
+            reason = f"read failed: {exc.strerror or exc}"
+            self._record_link(LinkRecord(name, real, _BROKEN, reason))
+            return SafetensorsHeader(name, {}, "skipped", reason)
+
 
 def normalize_repo_id(target: str) -> str:
     """Validate a remote repo target, returning the bare ``org/name`` id.
@@ -437,10 +647,12 @@ class RemoteRepo(_RepoReader):
     remote = True
     root = None
 
-    def __init__(self, target: str, *, list_files=None, fetch_text=None) -> None:
+    def __init__(self, target: str, *, list_files=None, fetch_text=None,
+                 fetch_range=None) -> None:
         repo = normalize_repo_id(target)
         super().__init__(repo)
         self._fetch_text = fetch_text
+        self._fetch_range = fetch_range
         if list_files is None:
             list_files = _hf_list_files
         self._listed = frozenset(list_files(repo))
@@ -500,6 +712,86 @@ class RemoteRepo(_RepoReader):
             self._files[name] = result
         return result
 
+    def safetensors_names(self) -> list[str]:
+        """Sorted top-level ``*.safetensors`` names from the fetched listing."""
+        names = sorted(
+            name for name in self._listed if is_safetensors_name(name)
+        )
+        self._safetensors_capped = len(names) > MAX_HEADER_FILES
+        return names[:MAX_HEADER_FILES]
+
+    def _range(self, name: str, start: int, length: int) -> bytes | None:
+        fetch = self._fetch_range
+        if fetch is None:
+            fetch = fetch_remote_range
+        return fetch(self.display, name, start, length)
+
+    def read_safetensors_header(
+        self,
+        name: str,
+        *,
+        budget: int | None = None,
+    ) -> SafetensorsHeader:
+        """Fetch one remote header prefix + header JSON, never the tensor data."""
+        if not is_safetensors_name(name):
+            raise ValueError(f"unsafe safetensors filename: {name!r}")
+        if name not in self._listed:
+            return SafetensorsHeader(
+                name,
+                {},
+                "skipped",
+                "the repository does not list this file",
+            )
+
+        prefix = self._range(name, 0, PREFIX_BYTES)
+        if prefix is None:
+            return SafetensorsHeader(
+                name,
+                {},
+                "skipped",
+                "the repository lists this file but its header prefix could not "
+                "be fetched",
+            )
+        if len(prefix) < PREFIX_BYTES:
+            return SafetensorsHeader(
+                name,
+                {},
+                "partial",
+                f"only {len(prefix)} of {PREFIX_BYTES} header prefix byte(s) were "
+                f"returned; the tensor map is incomplete",
+                consumed=len(prefix),
+            )
+
+        length, problem = header_length(prefix)
+        if problem is not None:
+            return read_header(name, prefix, b"")
+        assert length is not None
+        if budget is not None and length > budget:
+            return SafetensorsHeader(
+                name,
+                {},
+                "partial",
+                f"header length {length} would exceed the remaining total "
+                f"safetensors header budget ({budget} bytes); it was not read",
+                consumed=len(prefix),
+            )
+
+        header = self._range(name, PREFIX_BYTES, length)
+        if header is None:
+            return SafetensorsHeader(
+                name,
+                {},
+                "skipped",
+                "the header JSON range could not be fetched",
+                consumed=len(prefix),
+            )
+        return read_header(
+            name,
+            prefix,
+            header,
+            truncated=len(header) < length,
+        )
+
 
 def scan_repo(
     repo: _RepoReader,
@@ -542,6 +834,7 @@ def scan_repo(
         deep=deep,
         vocab=vocab,
         special_ids=special_ids,
+        tensor_axes=repo.tensor_axes,
     )
     findings += analyze_repo_links(repo.links)
 
@@ -625,6 +918,18 @@ def fetch_repo_text(
     from .remote import fetch_repo_text as impl
 
     return impl(repo, name, max_bytes=max_bytes, python_only=python_only)
+
+
+def fetch_remote_range(
+    repo: str,
+    name: str,
+    start: int,
+    length: int,
+) -> bytes | None:
+    """Lazy indirection over ``c4nary.remote.fetch_remote_range``."""
+    from .remote import fetch_remote_range as impl
+
+    return impl(repo, name, start, length)
 
 
 def load_remote_repo(target: str, **kwargs) -> RemoteRepo:

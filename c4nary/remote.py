@@ -242,3 +242,88 @@ def fetch_repo_text(
         data[:max_bytes].decode("utf-8", errors="replace"),
         truncated=len(data) > max_bytes,
     )
+
+
+def _safe_safetensors_name(filename: str) -> str:
+    """A top-level, non-hidden ``*.safetensors`` filename, or ``ValueError``."""
+    if (
+        not isinstance(filename, str)
+        or not filename
+        or not filename.endswith(".safetensors")
+        or len(filename) <= len(".safetensors")
+        or filename.startswith(".")
+        or "/" in filename
+        or "\\" in filename
+        or ".." in filename
+        or "\x00" in filename
+        or ":" in filename
+        or "?" in filename
+        or "#" in filename
+        or "%" in filename
+    ):
+        raise ValueError(f"unsafe safetensors filename: {filename!r}")
+    return filename
+
+
+def fetch_remote_range(
+    target: str,
+    filename: str,
+    start: int,
+    length: int,
+) -> bytes | None:
+    """Fetch ``length`` bytes at ``start`` from one repository file.
+
+    Strictly a range request: this is how a safetensors header is read without
+    touching the tensor payload. ``start == 0`` may accept a ``200`` (a server
+    that ignores ranges), but a nonzero start **requires** ``206`` -- otherwise
+    the server would send the whole file and the range read is refused before a
+    single body byte is consumed. The body is streamed with a hard cap of
+    ``length + 1`` bytes, so an ignored range on the prefix cannot turn into a
+    weights download.
+
+    Returns the bytes, or ``None`` when the file/range is unavailable. Network
+    failures raise :class:`RemoteError` as everywhere else in this module.
+    """
+    filename = _safe_safetensors_name(filename)
+    if (
+        not isinstance(start, int)
+        or isinstance(start, bool)
+        or not isinstance(length, int)
+        or isinstance(length, bool)
+        or start < 0
+        or length <= 0
+    ):
+        raise ValueError(f"invalid safetensors range: start={start!r} length={length!r}")
+    if length > (32 << 20):
+        raise ValueError(
+            f"safetensors range length {length} exceeds the 32 MiB header cap"
+        )
+    if target.startswith(("http://", "https://")):
+        return None
+    repo = target[len("hf://"):] if target.startswith("hf://") else target
+    url = f"{HF_BASE}/{repo}/resolve/main/{filename}"
+    try:
+        response = _session().get(
+            url,
+            headers={
+                "Range": f"bytes={start}-{start + length - 1}",
+                # Byte offsets only make sense over the identity-coded body.
+                "Accept-Encoding": "identity",
+                **_auth_headers(url),
+            },
+            stream=True,
+            timeout=30,
+            allow_redirects=True,
+        )
+    except Exception as exc:  # noqa: BLE001
+        raise RemoteError(f"network error fetching {filename}: {exc}") from exc
+
+    if response.status_code == 206 or (start == 0 and response.status_code == 200):
+        # Stream with a hard ``length + 1`` cap, then keep only the requested
+        # bytes: a 200 for a prefix can send the whole file, and a header JSON
+        # parse must never see a tensor-data byte.
+        return _read_capped_response(response, length + 1)[:length]
+    # A nonzero start with 200 means the server ignored the Range header. Do not
+    # read the body: that would be a full-file (weights) fetch.
+    response.close()
+    return None

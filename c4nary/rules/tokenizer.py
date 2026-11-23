@@ -10,6 +10,7 @@ count, so all length/range checks are exact. No weight data is read.
 from __future__ import annotations
 
 import re
+from typing import Mapping
 
 from ..parser import INT32_MAX, GGUFModel, MetaArray
 from ..report import Finding
@@ -124,6 +125,7 @@ def analyze_tokenizer(
     *,
     vocab: Vocab | None = None,
     special_ids: SpecialIds | None = None,
+    tensor_axes: Mapping[str, tuple[int, ...]] | None = None,
 ) -> list[Finding]:
     findings: list[Finding] = []
     meta = model.metadata
@@ -154,9 +156,25 @@ def analyze_tokenizer(
 
     # TOK002 - vocabulary synchronized with embedding/output tensors. Skipped on
     # shards: the embedding/output tensor may live in a different shard file.
+    #
+    # A repo target has no GGUF tensor map, so it supplies the real safetensors
+    # header axes instead. The default (``None``) is byte-for-byte the historical
+    # GGUF path; a supplied mapping replaces the tensor-map lookup, including an
+    # empty mapping (headers parsed but no candidate tensor), which stays silent.
     split_count = meta.get("split.count")
     is_shard = isinstance(split_count, int) and split_count > 1
-    if v is not None and not is_shard:
+    if tensor_axes is not None:
+        if v is not None:
+            for tname in sorted(tensor_axes):
+                shape = tuple(tensor_axes[tname])
+                if shape and v.length > max(shape):
+                    findings.append(finding(
+                        "TOK002",
+                        f"token count {v.length} exceeds every axis of {tname} {shape}; "
+                        f"tokens would index outside the embedding table.",
+                        location=f"safetensors:{tname}",
+                        subject=f"tensor:{tname}"))
+    elif v is not None and not is_shard:
         for tname in ("token_embd.weight", "output.weight"):
             t = by_name.get(tname)
             if t and t.shape and v.length > max(t.shape):
