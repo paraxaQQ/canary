@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Callable
 
 from .coverage import Surface, SurfaceState
+from .vocab import Vocab, resolve_vocab
 
 if TYPE_CHECKING:
     from .parser import GGUFModel
@@ -78,9 +79,10 @@ def _safe_bundle_name(name: str) -> str:
 def bundle_findings(
     model: "GGUFModel",
     read_text: Reader,
+    *,
+    vocab: Vocab | None = None,
 ) -> "tuple[list[Finding], list[Surface]]":
     """Run every repo-bundle rule against the files ``read_text`` can supply."""
-    from .parser import MetaArray
     from .rules.config import analyze_auto_map, analyze_config
     from .rules.template import (
         analyze_card,
@@ -97,6 +99,7 @@ def bundle_findings(
     out: list[Finding] = []
     surfaces: dict[str, Surface] = {}
     auto_map_configs: list[tuple[str, dict]] = []
+    vocab_value = resolve_vocab(model, vocab)
 
     def _record(name: str, state: SurfaceState, reason: str) -> None:
         surfaces[name] = Surface(f"bundle.{name}", state, reason)
@@ -156,6 +159,7 @@ def bundle_findings(
             cfg,
             include_auto_map=False,
             source=name,
+            vocab=vocab_value,
         )
         if any(
             isinstance(value, str)
@@ -195,12 +199,11 @@ def bundle_findings(
         reachable.update(_iter_token_strings(value))
 
         token_id = model.metadata.get(f"tokenizer.ggml.{token_name}_id")
-        tokens = model.metadata.get("tokenizer.ggml.tokens")
         if (isinstance(token_id, int) and not isinstance(token_id, bool)
-                and isinstance(tokens, MetaArray) and not tokens.truncated
-                and 0 <= token_id < len(tokens.preview)
-                and isinstance(tokens.preview[token_id], str)):
-            reachable.add(tokens.preview[token_id])
+                and vocab_value is not None and vocab_value.complete):
+            surface = vocab_value.surface(token_id)
+            if surface is not None:
+                reachable.add(surface)
 
     tokenizer_added = {
         entry.get("content")

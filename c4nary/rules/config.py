@@ -13,8 +13,8 @@ import re
 from collections.abc import Iterable
 from typing import TYPE_CHECKING
 
-from ..parser import MetaArray
 from ..report import Finding
+from ..vocab import Vocab, resolve_vocab
 from .registry import finding
 
 if TYPE_CHECKING:
@@ -75,17 +75,6 @@ def _bad_word_seqs(cfg: dict) -> list[list[int]]:
     return out
 
 
-def _reconstruct(ids: list[int], surfaces) -> str:
-    """Join token surfaces into text, mapping SentencePiece ▁ / GPT2 Ġ word-start to a
-    space. A crude decode -- enough to read a banned sequence as a phrase."""
-    parts = []
-    for tid in ids:
-        if 0 <= tid < len(surfaces) and isinstance(surfaces[tid], str):
-            s = surfaces[tid]
-            parts.append(" " + s[1:] if s[:1] in ("▁", "Ġ") else s)
-    return "".join(parts)
-
-
 def _stop_ids(model: GGUFModel, cfg: dict) -> set[int]:
     ids: set[int] = set()
     for k in _STOP_ID_KEYS:
@@ -129,11 +118,13 @@ def analyze_config(
     *,
     include_auto_map: bool = True,
     source: str = "config.json",
+    vocab: Vocab | None = None,
 ) -> list[Finding]:
     """Audit a parsed generation_config.json / config.json dict against the model."""
     if not isinstance(cfg, dict):
         return []
     findings: list[Finding] = []
+    vocab_value = resolve_vocab(model, vocab)
 
     # S2 -- free-text config strings (a bundled system_prompt / default message): the
     # injection scanner + (threat-model §5) AST-routing of any Jinja-carrying value. Runs
@@ -187,9 +178,7 @@ def analyze_config(
     forced_bos = _flatten_ids(cfg.get("forced_bos_token_id"))
     forced_eos = _flatten_ids(cfg.get("forced_eos_token_id"))
     if forced_decoder or forced_bos or forced_eos:
-        toks = model.metadata.get("tokenizer.ggml.tokens")
-        if isinstance(toks, MetaArray) and not toks.truncated:
-            surfaces = toks.preview
+        if vocab_value is not None and vocab_value.complete:
             groups: list[list[int]] = []
             previous_position: int | None = None
             for position, token_id in sorted(forced_decoder):
@@ -199,7 +188,7 @@ def analyze_config(
                 previous_position = position
 
             for group in groups:
-                text = _reconstruct(group, surfaces)
+                text = vocab_value.reconstruct(group)
                 _, hits = scan_injection_text(text)
                 if hits:
                     findings.append(finding(
@@ -215,7 +204,7 @@ def analyze_config(
                     ("forced_bos_token_id", forced_bos, "first generated token"),
                     ("forced_eos_token_id", forced_eos, "last token at max length")):
                 for token_id in sorted(token_ids):
-                    text = _reconstruct([token_id], surfaces)
+                    text = vocab_value.reconstruct([token_id])
                     _, hits = scan_injection_text(text)
                     if hits:
                         findings.append(finding(
@@ -260,18 +249,15 @@ def analyze_config(
     # can't be targeted without breaking the model). (b) bad_words_ids can ban a
     # multi-token sequence, so we also RECONSTRUCT each banned phrase and match split
     # forms ("can't", "I cannot") that no single token spells.
-    toks = model.metadata.get("tokenizer.ggml.tokens")
-    # A valid vocab is an array (MetaArray); a crafted model can put a scalar here --
-    # guard so the whole --bundle scan doesn't crash on toks.truncated / .preview.
-    if isinstance(toks, MetaArray) and not toks.truncated:
-        surfaces = toks.preview
+    if vocab_value is not None and vocab_value.complete:
         hits: list[str] = []
         for tid in sorted(suppressed):
-            if (0 <= tid < len(surfaces) and isinstance(surfaces[tid], str)
-                    and surfaces[tid].lstrip("▁Ġ ").lower() in _REFUSAL_SURFACES):
-                hits.append(f"{tid}={surfaces[tid]!r}")
+            surface = vocab_value.surface(tid)
+            if (surface is not None
+                    and surface.lstrip("▁Ġ ").lower() in _REFUSAL_SURFACES):
+                hits.append(f"{tid}={surface!r}")
         for seq in bad_seqs:
-            text = _reconstruct(seq, surfaces)
+            text = vocab_value.reconstruct(seq)
             if _REFUSAL_RE.search(text):
                 hits.append(f"{seq}={text.strip()!r}")
         if hits:

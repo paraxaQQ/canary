@@ -22,7 +22,10 @@ import io
 import struct
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from .vocab import Vocab
 
 GGUF_MAGIC = b"GGUF"
 
@@ -195,6 +198,13 @@ class GGUFModel:
     def architecture(self) -> str | None:
         value = self.metadata.get("general.architecture")
         return value if isinstance(value, str) else None
+
+    @property
+    def vocab(self) -> "Vocab | None":
+        """The model's vocabulary as a source-neutral value (``None`` if absent)."""
+        from .vocab import vocab_from_metadata
+
+        return vocab_from_metadata(self.metadata)
 
 
 class _Reader:

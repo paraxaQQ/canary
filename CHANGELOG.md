@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+### Architecture
+- Add `c4nary/vocab.py`, a read-only vocabulary-source abstraction. Rules now ask a
+  `Vocab` for its token count, surface strings, token types, and reconstructed text
+  instead of reaching into `tokenizer.ggml.tokens` / `tokenizer.ggml.token_type`
+  directly, so they no longer assume the vocabulary is GGUF-shaped.
+- The GGUF constructor wraps the parsed metadata arrays verbatim -- preview, true
+  length, truncation, and on-disk element size -- making it a no-op for existing scans.
+  A `tokenizer.json` constructor (`model.vocab` plus `added_tokens`) is implemented and
+  tested for the upcoming repo ingest, but is not wired into the CLI. Token ids are
+  stored sparsely, so a declared id far above the entry count costs no allocation.
+- GGUF output is byte-identical across the refactor: the baseline case diff is empty.
+  Rule ids, severities, finding text and order, and coverage strings are unchanged.
+
 ### Ingest
 - Classify the scan target before any parser sees it, so a GGUF file becomes one ingest
   among several rather than the entry ticket. `scan` gains `--as {gguf,ollama,repo}` to

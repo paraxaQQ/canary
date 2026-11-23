@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Iterable, Literal
 
+from .vocab import Vocab, resolve_vocab
+
 if TYPE_CHECKING:
     from .parser import GGUFModel
     from .report import Finding
@@ -77,8 +79,8 @@ def build_scan_coverage(
     policy_requested: bool = False,
     retiered_count: int = 0,
     bundle_surfaces: Iterable[Surface] = (),
+    vocab: Vocab | None = None,
 ) -> Coverage:
-    from .parser import MetaArray
     from .rules.template import embedded_template_unparseable
 
     template_count = sum(
@@ -124,13 +126,12 @@ def build_scan_coverage(
             f"{parse_failures} of {template_count} embedded chat template(s) failed parsing.",
         )
 
-    tokens = model.metadata.get("tokenizer.ggml.tokens")
-    token_types = model.metadata.get("tokenizer.ggml.token_type")
+    vocab_value = resolve_vocab(model, vocab)
     deep_ready = (
-        isinstance(tokens, MetaArray)
-        and isinstance(token_types, MetaArray)
-        and not tokens.truncated
-        and not token_types.truncated
+        vocab_value is not None
+        and vocab_value.complete
+        and vocab_value.types is not None
+        and vocab_value.types_complete
     )
     if not deep_tokenizer:
         deep_surface = Surface(

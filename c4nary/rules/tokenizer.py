@@ -13,6 +13,7 @@ import re
 
 from ..parser import INT32_MAX, GGUFModel, MetaArray
 from ..report import Finding
+from ..vocab import Vocab, resolve_vocab
 from .registry import finding
 
 # Sentinels some exporters use for "unset" (uint32 -1 / int32 -1).
@@ -58,19 +59,18 @@ def _is_noise_surface(s: str) -> bool:
     return s.strip("<>[]|｜ ▁").lower() in {"", "pad", "unk", "unused", "reserved"}
 
 
-def _seam_findings(model: GGUFModel, deep: bool) -> list[Finding]:
+def _seam_findings(
+    model: GGUFModel, deep: bool, vocab: Vocab | None
+) -> list[Finding]:
     """Deep tokenizer-seam pass (opt-in ``--deep-tokenizer``). Needs the FULL vocab +
     token_type materialized; a truncated preview cannot answer reachability, so the pass
     no-ops rather than guessing (the CLI surfaces that it was skipped -- silence != clean)."""
     if not deep:
         return []
-    toks = model.metadata.get("tokenizer.ggml.tokens")
-    ttype = model.metadata.get("tokenizer.ggml.token_type")
-    if (not (isinstance(toks, MetaArray) and isinstance(ttype, MetaArray))
-            or toks.truncated or ttype.truncated):
+    if vocab is None or not vocab.complete or vocab.types is None or not vocab.types_complete:
         return []
 
-    surfaces, types = toks.preview, ttype.preview
+    surfaces, types = vocab.surfaces, vocab.types
     all_surf: set[str] = set()
     special_surf: set[str] = set()
     control_count = 0
@@ -118,58 +118,69 @@ def _seam_findings(model: GGUFModel, deep: bool) -> list[Finding]:
     return findings
 
 
-def _vocab_size(model: GGUFModel) -> int | None:
-    tokens = model.metadata.get("tokenizer.ggml.tokens")
-    return tokens.length if isinstance(tokens, MetaArray) else None
-
-
-def analyze_tokenizer(model: GGUFModel, deep: bool = False) -> list[Finding]:
+def analyze_tokenizer(
+    model: GGUFModel, deep: bool = False, *, vocab: Vocab | None = None
+) -> list[Finding]:
     findings: list[Finding] = []
     meta = model.metadata
-    vocab = _vocab_size(model)
+    v = resolve_vocab(model, vocab)
     by_name = {t.name: t for t in model.tensors}
 
     # TOK001 - special-token ids within the vocabulary.
-    if vocab is not None:
+    if v is not None:
         for key in _SPECIAL_ID_KEYS:
             tid = meta.get(f"tokenizer.ggml.{key}")
             if isinstance(tid, int) and not isinstance(tid, bool) and tid not in _UNSET:
-                if tid < 0 or tid >= vocab:
+                if tid < 0 or tid >= v.length:
                     findings.append(finding(
                         "TOK001",
-                        f"{key}={tid} is outside the vocabulary [0, {vocab}).",
+                        f"{key}={tid} is outside the vocabulary [0, {v.length}).",
                         location=f"tokenizer.ggml.{key}"))
 
     # TOK002 - vocabulary synchronized with embedding/output tensors. Skipped on
     # shards: the embedding/output tensor may live in a different shard file.
     split_count = meta.get("split.count")
     is_shard = isinstance(split_count, int) and split_count > 1
-    if vocab is not None and not is_shard:
+    if v is not None and not is_shard:
         for tname in ("token_embd.weight", "output.weight"):
             t = by_name.get(tname)
-            if t and t.shape and vocab > max(t.shape):
+            if t and t.shape and v.length > max(t.shape):
                 findings.append(finding(
                     "TOK002",
-                    f"token count {vocab} exceeds every axis of {tname} {t.shape}; "
+                    f"token count {v.length} exceeds every axis of {tname} {t.shape}; "
                     f"tokens would index outside the embedding table.",
                     location="tokenizer.ggml.tokens",
                     subject=f"tensor:{tname}"))
 
-    # TOK003 - parallel arrays length + token_type enum.
-    if vocab is not None:
-        for key in ("scores", "token_type"):
-            arr = meta.get(f"tokenizer.ggml.{key}")
-            if isinstance(arr, MetaArray) and arr.length != vocab:
-                findings.append(finding(
-                    "TOK003",
-                    f"tokenizer.ggml.{key} has {arr.length} entries but there are "
-                    f"{vocab} tokens.",
-                    location=f"tokenizer.ggml.{key}",
-                    subject=f"length:{key}"))
-    ttype = meta.get("tokenizer.ggml.token_type")
-    if isinstance(ttype, MetaArray):
-        bad = sorted({v for v in ttype.preview
-                      if isinstance(v, int) and v not in _TOKEN_TYPE_RANGE})
+    # TOK003 - parallel arrays length + token_type enum. ``scores`` is a GGUF-only
+    # parallel array, read directly; ``token_type`` comes from the vocab when it
+    # was built from GGUF metadata.
+    if v is not None:
+        scores = meta.get("tokenizer.ggml.scores")
+        if isinstance(scores, MetaArray) and scores.length != v.length:
+            findings.append(finding(
+                "TOK003",
+                f"tokenizer.ggml.scores has {scores.length} entries but there are "
+                f"{v.length} tokens.",
+                location="tokenizer.ggml.scores",
+                subject="length:scores"))
+        if v.types_length is not None and v.types_length != v.length:
+            findings.append(finding(
+                "TOK003",
+                f"tokenizer.ggml.token_type has {v.types_length} entries but there are "
+                f"{v.length} tokens.",
+                location="tokenizer.ggml.token_type",
+                subject="length:token_type"))
+    # A model with token_type but no token array still gets the enum scan: the
+    # vocabulary abstraction does not exist then, so read the array directly.
+    enum_values = v.types if v is not None else None
+    if v is None:
+        raw_types = meta.get("tokenizer.ggml.token_type")
+        if isinstance(raw_types, MetaArray):
+            enum_values = raw_types.preview
+    if enum_values is not None:
+        bad = sorted({value for value in enum_values
+                      if isinstance(value, int) and value not in _TOKEN_TYPE_RANGE})
         if bad:
             findings.append(finding(
                 "TOK003",
@@ -178,13 +189,12 @@ def analyze_tokenizer(model: GGUFModel, deep: bool = False) -> list[Finding]:
                 subject="token_type_enum"))
 
     # TOK004 - implausibly large vocabulary token.
-    tokens = meta.get("tokenizer.ggml.tokens")
-    if isinstance(tokens, MetaArray) and tokens.max_elem_bytes > 4096:
+    if v is not None and v.max_surface_bytes > 4096:
         sev_note = " (exceeds INT32_MAX - signed-cast overflow risk)" \
-            if tokens.max_elem_bytes > INT32_MAX else ""
+            if v.max_surface_bytes > INT32_MAX else ""
         findings.append(finding(
             "TOK004",
-            f"a vocabulary token is {tokens.max_elem_bytes} bytes{sev_note}.",
+            f"a vocabulary token is {v.max_surface_bytes} bytes{sev_note}.",
             location="tokenizer.ggml.tokens"))
 
     # TOK005 - add_bos/add_eos flags consistent with the ids they reference.
@@ -194,12 +204,12 @@ def analyze_tokenizer(model: GGUFModel, deep: bool = False) -> list[Finding]:
             tid = meta.get(f"tokenizer.ggml.{id_key}")
             ok = (isinstance(tid, int) and not isinstance(tid, bool)
                   and tid not in _UNSET and tid >= 0
-                  and (vocab is None or tid < vocab))
+                  and (v is None or tid < v.length))
             if not ok:
                 findings.append(finding(
                     "TOK005",
                     f"{flag} is set but {id_key} is missing or out of range.",
                     location=f"tokenizer.ggml.{flag}"))
 
-    findings += _seam_findings(model, deep)
+    findings += _seam_findings(model, deep, v)
     return findings
