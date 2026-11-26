@@ -57,16 +57,25 @@ A nightly tag should not be pushed unless these checks pass.
 
 ```powershell
 git push -u origin building
-git tag -a v0.3.1-building.5 -m "nightly: v0.3.1-building.5"
-git push origin v0.3.1-building.5
+git tag -a vX.Y.Z-building.N -m "nightly: vX.Y.Z-building.N"
+git push origin vX.Y.Z-building.N
 ```
 
-Attach the wheel and sdist to a GitHub **prerelease** for that tag:
+Write the release notes to a file and attach the wheel and sdist to a GitHub
+**prerelease** for that tag. The body is not a one-liner; it carries:
+
+- the status line ``Nightly `building` artifact. **Not an official release.**``;
+- the band or feature highlights;
+- wheel and sdist sizes with SHA-256 hashes;
+- the commit and the rule count (and any rule changes);
+- the install command;
+- the verification results;
+- the closing note that the build is not uploaded to PyPI.
 
 ```powershell
-gh release create v0.3.1-building.5 outputs\building-dist\* `
-  --prerelease --title "nightly v0.3.1-building.5" `
-  --notes "Nightly build; see CHANGELOG.md. Not an official release."
+gh release create vX.Y.Z-building.N outputs\building-dist\* `
+  --prerelease --title "nightly vX.Y.Z-building.N" `
+  --notes-file outputs\vX.Y.Z-building.N-notes.md
 ```
 
 GitHub reserves the "Latest" badge for non-prerelease releases, so the newest
