@@ -241,6 +241,52 @@ def analyze_template(source: str | None) -> list[Finding]:
     return _dedupe(findings)
 
 
+def analyze_template_text(
+    source: str,
+    *,
+    prefix: str = "template",
+    label: str = "Template",
+    include_size: bool = True,
+    include_urls: bool = True,
+    include_lexicon: bool = True,
+) -> list[Finding]:
+    """Engine-agnostic text checks for a template we cannot parse as Jinja2.
+
+    Used by the Ollama Modelfile target, whose ``TEMPLATE`` is Go
+    ``text/template``. Only the checks that do not depend on Jinja2 syntax run:
+    embedded URLs/IPs, size, instruction-like text, and concealed characters.
+    Every rule keeps its registered id and severity; only the location prefix and
+    the wording's leading label change.
+    """
+    return _dedupe(_text_checks(
+        source,
+        include_size=include_size,
+        include_urls=include_urls,
+        include_lexicon=include_lexicon,
+        prefix=prefix,
+        label=label,
+    ))
+
+
+def instruction_text_evidence(text: str) -> tuple[str | None, str | None] | None:
+    """Return (lexicon hit, directive shape) for free text, or None.
+
+    Shared with the Go-template family: an injected sentence is an injected
+    sentence regardless of which template language emitted it.
+    """
+    low = _lex_text(text)
+    hit = next((phrase for phrase in INSTRUCTION_LEXICON if phrase in low), None)
+    shape = _directive_shape(text)
+    if hit is None and shape is None:
+        return None
+    return hit, (shape[0] if shape is not None else None)
+
+
+def is_structural_literal(text: str) -> bool:
+    """Public wrapper for the format-marker filter used by content-gate checks."""
+    return _is_structural_literal(text)
+
+
 _TEMPLATE_KEY = "tokenizer.chat_template"
 
 
@@ -628,25 +674,32 @@ def _check_reconstructed(findings: list[Finding], assembled: str | None, loc: st
 def _text_checks(
     source: str,
     directive_shape: tuple[str, str] | None = None,
+    *,
+    prefix: str = "template",
+    label: str = "Template",
+    include_size: bool = True,
+    include_urls: bool = True,
+    include_lexicon: bool = True,
 ) -> list[Finding]:
     findings: list[Finding] = []
+    location = f"{prefix}:text"
 
-    urls = URL_RE.findall(source)
-    ips = [m for m in IP_RE.findall(source)]
+    urls = URL_RE.findall(source) if include_urls else []
+    ips = [m for m in IP_RE.findall(source)] if include_urls else []
     if urls or ips:
         sample = (urls + ips)[0]
         findings.append(finding(
             "TPL011",
-            f"Template text contains {len(urls)} URL(s) and {len(ips)} IP(s) "
+            f"{label} text contains {len(urls)} URL(s) and {len(ips)} IP(s) "
             f"(e.g. {sample!r}).",
-            location="template:text",
+            location=location,
         ))
 
-    if len(source.encode("utf-8")) > MAX_TEMPLATE_BYTES:
+    if include_size and len(source.encode("utf-8")) > MAX_TEMPLATE_BYTES:
         findings.append(finding(
             "TPL012",
-            f"Template is {len(source)} chars (> {MAX_TEMPLATE_BYTES} byte threshold).",
-            location="template:text",
+            f"{label} is {len(source)} chars (> {MAX_TEMPLATE_BYTES} byte threshold).",
+            location=location,
         ))
 
     # Hidden-character scan over the raw source (works even if parsing failed).
@@ -654,39 +707,39 @@ def _text_checks(
     if bidi:
         findings.append(finding(
             "TPL025",
-            f"Template contains bidirectional-override codepoints ({_fmt_cps(bidi)}) "
+            f"{label} contains bidirectional-override codepoints ({_fmt_cps(bidi)}) "
             f"that can make rendered text differ from what is tokenized (Trojan Source).",
-            location="template:text",
+            location=location,
         ))
     hidden = sorted({ord(c) for c in source if _is_hidden(c)})
     if hidden:
         findings.append(finding(
             "TPL024",
-            f"Template contains invisible / zero-width / tag codepoints "
+            f"{label} contains invisible / zero-width / tag codepoints "
             f"({_fmt_cps(hidden)}) that can conceal instructions; vetted "
             f"templates are plain printable text.",
-            location="template:text",
+            location=location,
         ))
     controls = sorted({ord(c) for c in source if _is_control(c)})
     if controls:
         findings.append(finding(
             "TPL026",
-            f"Template contains raw control characters ({_fmt_cps(controls)}); "
+            f"{label} contains raw control characters ({_fmt_cps(controls)}); "
             f"anomalous (often an artifact) - manual review.",
-            location="template:text",
+            location=location,
         ))
 
     low = _lex_text(source)  # NFKC + confusables-fold so obfuscated text matches
-    hits = [p for p in INSTRUCTION_LEXICON if p in low]
-    if hits or directive_shape is not None:
+    hits = [p for p in INSTRUCTION_LEXICON if p in low] if include_lexicon else []
+    if hits or (include_lexicon and directive_shape is not None):
         evidence = (f"e.g. {hits[0]!r}" if hits else
                     f"structural shape {directive_shape[0]!r} ({directive_shape[1]})")
         findings.append(finding(
             "TPL023",
-            f"Template emits imperative instruction-like text not sourced from the "
+            f"{label} emits imperative instruction-like text not sourced from the "
             f"conversation ({evidence}) - possible hidden instruction injection; "
             f"manual review, not proof of malice.",
-            location="template:text",
+            location=location,
         ))
 
     return findings

@@ -45,8 +45,8 @@
   target is never inferred from a bare string -- only declared.
 - The GGUF path is unchanged by construction: GGUF magic is checked before any text
   heuristic, and an unrecognized target falls through to the GGUF ingest so the parser
-  still raises its own error for a missing or non-model file. `ollama` targets still
-  report that they are not implemented yet and exit 3.
+  still raises its own error for a missing or non-model file. A1 left `ollama` at
+  exit 3; the Modelfile target below implements it.
 - Add the **local repo target**, `canary scan path\to\repo --as repo` (a directory already
   classifies as `repo`). It reads the same allowlisted repo surfaces as `--bundle` --
   `config.json` / `generation_config.json`, `tokenizer.json`, special-token files,
@@ -101,6 +101,71 @@
   usable `tokenizer.json` vocabulary was compared, otherwise `partial` / `skipped` /
   `unparseable`. Symlink escapes still emit `REP001` and are `skipped`, never
   `absent`; `repo.links` behavior is unchanged.
+
+### Ollama Modelfile target
+- Add the **local Modelfile target**: `canary scan .\Modelfile` (a file named
+  `Modelfile`, a `*.Modelfile`, or a file whose first directive is `FROM`) and
+  `--as ollama` / `--ollama`. The parser covers `FROM`, `PARAMETER`, `TEMPLATE`,
+  `SYSTEM`, `LICENSE`, `MESSAGE`, `REQUIRES`, and `CAPABILITY`, including
+  triple-quoted values, CRLF, comments, and repeated `FROM` shards. A file named
+  `Modelfile` that is really a GGUF is rejected by magic, not parsed as text.
+- `TEMPLATE` is Go `text/template`, so the Jinja2 AST family does not run. The
+  existing engine-agnostic text checks (`TPL011`, `TPL012`, `TPL023`, `TPL024`,
+  `TPL025`, `TPL026`) run on `TEMPLATE` and `SYSTEM`; `LICENSE` and example
+  `MESSAGE` text are concealment-only because URLs and imperative legal/example
+  prose are normal there. No `TPL101`. The structural Go pass and `GOT` rules are
+  below.
+- `FROM` resolves to a model reference, GGUF file, shard glob, or Safetensors
+  directory, but the referenced artifact is not read. `ollama.from` reports
+  `skipped` for a model reference and `partial` for an unresolved path or an empty
+  Safetensors directory; an out-of-root path is recorded in the reason. The
+  interactive menu gains item 8, "Scan a local Ollama Modelfile".
+- `PARAMETER` values are checked against Ollama's accepted names and types --
+  `api.Options`/`api.Runner` plus the parser's deprecated set, not only the
+  reference page subset (`num_gpu`, `presence_penalty`, `penalize_newline`).
+  Unknown names, mistyped values, `typical_p` (rejected by Ollama as a model
+  parameter), and repeated single-valued parameters make
+  `ollama.parameters=partial` with the specific name. Duplicate `TEMPLATE` /
+  `SYSTEM` / `REQUIRES` instructions keep the last value and report
+  `ollama.instructions=partial`; every `LICENSE` is kept and joined, as Ollama
+  does. `REQUIRES v0.14.0` is accepted and normalized.
+- Verified against 160 real Hugging Face Modelfiles: our parser and Ollama's
+  `parser.ParseFile` agree on 160/160 (159 valid, the same one rejected), 101 of
+  102 extracted Go templates parse with Go's own `text/template`, the CLI report
+  shape and determinism hold, and a 4,000-case mutation fuzz produced no
+  unexpected exceptions. Real remote GGUF, `--bundle`, and repository scans are
+  byte-identical to the pre-A4a commit.
+- Reject with exit 3: `ollama://` model-store references (A4c), a bare model
+  reference, `--remote`, `--bundle`, `--gguf-file`, and `--manifest`. MCP gains
+  `target_type="ollama"` through the same shared pass; `sha256` is the Modelfile
+  hash and `template_sha256` is the `TEMPLATE` hash (null when absent).
+- No behavior change to GGUF or repository scans: the 19-case CLI baseline keeps
+  the same findings, coverage, human output, and SARIF results. The ruleset digest
+  changes only because six `GOT` rules are registered.
+
+### Go template analysis (A4b)
+- Add `c4nary/go_template.py`: a structural parser for Ollama's Go
+  `text/template`. It tokenizes actions, trim markers, strings, raw strings,
+  runes, numbers, fields, variables, comments, and pipelines, then parses
+  `if`/`else if`/`else`/`end`, `range`, `with`, `define`, `block`, `template`, and
+  assignments. It never renders. Caps: 256 KiB, 20,000 actions, 25 levels.
+  Unexpected parser/rule exceptions become `GOT000`, never a silent clean.
+- Six rules: `GOT000` WARN parse failure; `GOT001` FAIL content-gated instruction
+  injection keyed on `.Prompt`/`.Messages`; `GOT002` WARN date test;
+  `GOT003` WARN `call`; `GOT004` WARN named composition; `GOT005` WARN
+  reconstructed instruction text via `printf`/`print`. `.System` is not treated
+  as user content. Taint follows assignments from content and `range` element
+  bindings.
+- `chat_templates` moves from `partial` to `examined` for a parsed template and
+  `unparseable` (with the template-relative line) for a failed one; `partial` is
+  reserved for an empty or over-cap template. `GOT001` is recorded as out of scope
+  for the Hugging Face Jinja2 corpus gate, with a reason.
+- Verified against 160 real Modelfiles: 101 valid Go templates, 0 `GOT`
+  false-positive findings; the one broken upstream template produces `GOT000` at
+  the same line and message as Go's parser. A 600-case differential fuzz against
+  Go's parser produced 0 false `GOT000` on templates Go accepts; the parser
+  intentionally over-accepts undefined function/variable names. Full suite: 710
+  tests.
 
 ### Detection
 - Extend the TPL023 structural shape set with two target-free forms, each requiring

@@ -4,15 +4,15 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "c4nary"
-version = "0.3.1+building.5"
-description = "Deterministic, read-only static auditor for GGUF models and repositories: chat templates, tokenizer metadata, model cards, configuration, and structural consistency."
+version = "0.4.0+building.6"
+description = "Deterministic, read-only static auditor for GGUF models, repositories, and Ollama Modelfiles: chat templates, tokenizer metadata, model cards, configuration, and structural consistency."
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
 license-files = ["LICENSE"]
 authors = [{ name = "Actual Intelligence LLC" }]
-keywords = ["gguf", "security", "backdoor", "ssti", "jinja2", "chat-template",
-            "tokenizer", "model-card", "supply-chain", "audit"]
+keywords = ["gguf", "ollama", "security", "backdoor", "ssti", "jinja2",
+            "chat-template", "tokenizer", "model-card", "supply-chain", "audit"]
 classifiers = [
   "Development Status :: 4 - Beta",
   "Environment :: Console",

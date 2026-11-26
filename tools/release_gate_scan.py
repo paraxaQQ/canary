@@ -65,6 +65,7 @@ CORPUS_FAIL_EXCLUSIONS = {
     "STR003": "requires complete GGUF file bounds, not the gate's bounded header reads",
     "INT001": "requires a user-supplied integrity manifest, which the corpus has no authority to invent",
     "INT002": "requires a user-supplied integrity manifest, which the corpus has no authority to invent",
+    "GOT001": "applies only to Ollama Modelfile Go templates; the Hugging Face corpus gate inventories GGUF/repository Jinja2 templates, not Modelfiles",
 }
 BUNDLE_FILES = frozenset(SHIPPED_BUNDLE_FILES)
 FORCED_KEYS = frozenset({

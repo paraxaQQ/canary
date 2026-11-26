@@ -22,12 +22,15 @@ Spotted another copy? Please open an issue here and report it to GitHub via Repo
 
 
 > **Codename `c4nary`. Command: `canary`.**
-> A deterministic, read-only static auditor for **GGUF** model files. It inspects
-> chat templates, tokenizer metadata, model cards, bundled configuration, the
-> `trust_remote_code` Python a repo ships, and structural consistency — without
-> rendering templates, executing that Python, or reading tensor values.
+> A deterministic, read-only static auditor for **GGUF** model files, model
+> **repositories**, and local **Ollama `Modelfile`** definitions. It inspects
+> Jinja2 chat templates, tokenizer metadata, model cards, bundled configuration,
+> the `trust_remote_code` Python a repo ships, structural consistency, and a
+> Modelfile's instructions — without rendering templates, executing that Python,
+> or reading tensor values.
 > It covers SSTI/RCE indicators and behavioral template branches that can inject
-> instructions, suppress refusals, or react to message content.
+> instructions, suppress refusals, or react to message content. A Modelfile's
+> `TEMPLATE` is Go `text/template`; it is parsed structurally and never rendered.
 >
 > **The core never renders templates, reads tensor values, or uses the network.**
 > Network access exists only in the explicit `--remote` path. `--bundle` and
@@ -154,6 +157,15 @@ false-positive classes found + fixed in the wild, and the evasion analysis:
    and never weight bytes — and reports `repo.links` as `absent` because
    server-served bytes have no local containment boundary.
 
+   A local Ollama `Modelfile` is its own target: `canary scan .\Modelfile --as
+   ollama` reads `FROM`, `PARAMETER`, `TEMPLATE`, `SYSTEM`, `MESSAGE`, `LICENSE`,
+   `REQUIRES`, and `CAPABILITY`, and resolves `FROM` without reading the
+   referenced model. Its `TEMPLATE` is Go `text/template`; it is parsed
+   structurally (never rendered) and checked by the `GOT` rules for content-gated
+   instruction injection, date-gated behavior, the `call` builtin, named
+   composition, and reconstructed instruction text. An unparseable template is
+   `chat_templates=unparseable` with `GOT000`, never a silent clean.
+
 ## Validated against real models
 
 The v0.2.2 template-FAIL gate processed **192,032 / 192,032** frozen repository
@@ -205,8 +217,9 @@ Every finding maps to a registered rule id; run `canary rules` for the full list
 
 - **c4nary** is the project and package; **canary** is the command (the `c4nary`
   console script is an alias).
-- Target types are **GGUF**, **repository**, and **Ollama** (not implemented).
-  `--as {gguf,repo,ollama}` selects one; a local directory defaults to `repo`.
+- Target types are **GGUF**, **repository**, and **Ollama** (a local `Modelfile`;
+  model-store references are not implemented yet). `--as {gguf,repo,ollama}`
+  selects one; a local directory defaults to `repo`.
 - `--remote` means the target is on Hugging Face. `--as` decides whether that
   means a GGUF header or repository files.
 - `--bundle` is a **GGUF-only** flag; a repository target reads those surfaces by
@@ -236,8 +249,8 @@ render). Python 3.10+.
 ## Usage
 
 Run `canary` with **no arguments** for an interactive, menu-driven prompt (scan a
-GGUF or repository, diff, hash, or list rules) — no flags to memorize. Every
-action also has a flag-based subcommand for scripts and CI:
+GGUF, repository, or Ollama Modelfile, diff, hash, or list rules) — no flags to
+memorize. Every action also has a flag-based subcommand for scripts and CI:
 
 ```sh
 canary                                 # interactive menu (on a terminal)
@@ -263,6 +276,10 @@ canary scan path\to\repo --as repo --deep-tokenizer   # tokenizer.deep is partia
 # A remote repo with no GGUF file (repo surfaces only; no weights):
 canary scan org/model --remote --as repo
 canary scan hf://org/model --remote --as repo --json
+
+# A local Ollama Modelfile (a file named Modelfile is classified automatically):
+canary scan .\Modelfile --as ollama
+canary scan .\Modelfile --as ollama --json
 
 canary diff a.gguf b.gguf              # structural diff of two models
 canary hash model.gguf --manifest m.json   # write a known-good manifest
@@ -298,6 +315,24 @@ are skipped for remote scans. This is the **only** part of c4nary that uses the
 network (see invariants below).
 
 `c4nary` is an alias for the `canary` command; `python -m c4nary` also works.
+
+### Auditing an Ollama Modelfile
+
+A Modelfile is a portable model definition, so the scan covers the whole file:
+`FROM` resolution, `PARAMETER` names and value types, `SYSTEM` / `MESSAGE` /
+`LICENSE` text, and `TEMPLATE`. The `TEMPLATE` is Go `text/template`, not Jinja2.
+It is tokenized and parsed structurally — never rendered — and checked for
+content-gated instruction injection (`GOT001`), date-gated behavior (`GOT002`),
+the `call` builtin (`GOT003`), named template composition (`GOT004`), and
+reconstructed instruction text (`GOT005`). A template that does not parse is
+`chat_templates=unparseable` and raises `GOT000` (WARN); text-level checks still
+run.
+
+`FROM` is resolved to a GGUF file, a shard glob, a Safetensors directory, or a
+model reference, but the referenced artifact is **not read** — the
+`ollama.from` coverage row and a stderr note say which. Model-store references
+(`ollama://name:tag`), registry access, and `--manifest` are not implemented
+yet. `--remote`, `--bundle`, and `--gguf-file` are rejected for this target.
 
 ### Example: a behavioral backdoor
 

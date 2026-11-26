@@ -18,6 +18,9 @@ _NOTE_SURFACES = (
     "structure", "manifest", "tokenizer.deep", "bundle", "repo.links",
     # Repo-only summaries: the GGUF path keeps its historical stderr exactly.
     "chat_templates", "tokenizer", "metadata", "tensor_map.consistency",
+    # Modelfile details: silence would imply the referenced model was audited.
+    "ollama.instructions", "ollama.from", "ollama.parameters", "ollama.system",
+    "ollama.messages", "ollama.requires", "ollama.capability",
 )
 _REPO_SUMMARY_SURFACES = frozenset({
     "chat_templates", "tokenizer", "metadata", "tensor_map.consistency",
@@ -61,6 +64,7 @@ class Coverage:
     def notes(self) -> list[str]:
         by_id = {surface.id: surface for surface in self.surfaces}
         repo_mode = "repo.source" in by_id
+        ollama_mode = "ollama.source" in by_id
         notes: list[str] = []
         for surface_id in _NOTE_SURFACES:
             surface = by_id.get(surface_id)
@@ -75,7 +79,18 @@ class Coverage:
             if surface_id == "repo.links" and surface.state == "examined":
                 continue
             if surface_id in _REPO_SUMMARY_SURFACES:
-                if not repo_mode or surface.state == "examined":
+                if ollama_mode:
+                    # Only the template summary is meaningful for a Modelfile;
+                    # metadata/tokenizer are structurally absent and one note
+                    # would repeat what the human header already says.
+                    if surface_id != "chat_templates" or surface.state == "examined":
+                        continue
+                elif not repo_mode or surface.state == "examined":
+                    continue
+            if surface_id.startswith("ollama.") and surface.state in {
+                    "examined", "absent"}:
+                # FROM is always announced: even a resolved path was not read.
+                if surface_id != "ollama.from":
                     continue
             notes.append(surface.reason)
         return notes
@@ -268,6 +283,224 @@ def build_scan_coverage(
         bundle_surface,
         *unparseable_metadata,
         *bundle_surfaces,
+    ])
+
+
+def _ollama_from_surface(modelfile) -> Surface:
+    specs = modelfile.from_specs
+    if not specs:
+        return Surface("ollama.from", "absent", "the Modelfile has no FROM instruction.")
+    parts = []
+    for spec in specs:
+        detail = f"{spec.raw} -> {spec.kind}: {spec.reason}"
+        if spec.outside_root:
+            detail += " (path is outside the Modelfile directory)"
+        parts.append(detail)
+    reason = "FROM resolution: " + "; ".join(parts)
+    if all(spec.kind == "model" for spec in specs):
+        return Surface("ollama.from", "skipped", reason)
+    if any(spec.kind == "unresolved" or spec.partial for spec in specs):
+        return Surface("ollama.from", "partial", reason)
+    return Surface("ollama.from", "examined", reason)
+
+
+def _ollama_instructions_surface(modelfile) -> Surface:
+    count = len(modelfile.instructions)
+    if modelfile.notes:
+        return Surface(
+            "ollama.instructions",
+            "partial",
+            f"{count} instruction(s) parsed; " + "; ".join(modelfile.notes),
+        )
+    return Surface(
+        "ollama.instructions",
+        "examined",
+        f"{count} instruction(s) parsed from {modelfile.line_count} line(s).",
+    )
+
+
+def build_ollama_coverage(
+    modelfile,
+    *,
+    baseline_requested: bool = False,
+    suppressed_count: int = 0,
+    policy_requested: bool = False,
+    retiered_count: int = 0,
+) -> Coverage:
+    """Coverage manifest for a local Ollama Modelfile target (A4a)."""
+    source_reason = (
+        f"Modelfile {modelfile.display} was read: {modelfile.line_count} line(s), "
+        f"{len(modelfile.instructions)} instruction(s)."
+    )
+    if modelfile.invalid_utf8:
+        source_reason += (
+            " Invalid UTF-8 bytes were replaced with U+FFFD before analysis; "
+            "the affected text was not audited byte-for-byte."
+        )
+
+    analysis = modelfile.template_analysis
+    if modelfile.template is None:
+        template_surface = Surface(
+            "chat_templates",
+            "absent",
+            "the Modelfile declares no TEMPLATE instruction; there is no "
+            "model-facing prompt template to examine.",
+        )
+    elif not modelfile.template.strip():
+        template_surface = Surface(
+            "chat_templates",
+            "partial",
+            "the TEMPLATE instruction is empty; nothing was analyzed.",
+        )
+    elif analysis is None:
+        template_surface = Surface(
+            "chat_templates",
+            "partial",
+            "the TEMPLATE instruction was not parsed; only text checks ran.",
+        )
+    elif analysis.oversize:
+        template_surface = Surface(
+            "chat_templates",
+            "partial",
+            f"the TEMPLATE exceeds the {len(modelfile.template.encode('utf-8'))} byte "
+            f"parser cap; text checks ran, Go structure was not analyzed.",
+        )
+    elif analysis.error is not None:
+        where = (f" (template line {analysis.error_line})"
+                 if analysis.error_line else "")
+        template_surface = Surface(
+            "chat_templates",
+            "unparseable",
+            f"the Go text/template could not be fully analyzed{where}: "
+            f"{analysis.error}. Text checks still ran.",
+        )
+    else:
+        template_surface = Surface(
+            "chat_templates",
+            "examined",
+            f"the Go text/template parsed ({analysis.action_count} action(s)); text "
+            f"checks and the GOT rules ran.",
+        )
+
+    if not modelfile.parameters:
+        parameters_surface = Surface(
+            "ollama.parameters", "absent", "the Modelfile declares no PARAMETER.")
+    elif modelfile.parameter_issues:
+        parameters_surface = Surface(
+            "ollama.parameters",
+            "partial",
+            f"{len(modelfile.parameters)} PARAMETER instruction(s) parsed; "
+            + "; ".join(modelfile.parameter_issues),
+        )
+    else:
+        parameters_surface = Surface(
+            "ollama.parameters",
+            "examined",
+            f"{len(modelfile.parameters)} PARAMETER instruction(s) parsed against "
+            f"the known Ollama names and value types.",
+        )
+
+    baseline_surface = Surface(
+        "baseline",
+        "examined" if baseline_requested else "absent",
+        (
+            f"the supplied baseline suppressed {suppressed_count} finding(s); "
+            "all suppressed findings remain in the report."
+            if baseline_requested
+            else "no suppression baseline was supplied."
+        ),
+    )
+    policy_surface = Surface(
+        "policy",
+        "examined" if policy_requested else "absent",
+        (
+            f"the supplied policy re-tiered {retiered_count} finding(s) from their "
+            "registered severity."
+            if policy_requested
+            else "no severity policy was supplied; registered severities applied."
+        ),
+    )
+
+    return Coverage.from_surfaces([
+        Surface("ollama.source", "examined", source_reason),
+        _ollama_instructions_surface(modelfile),
+        _ollama_from_surface(modelfile),
+        parameters_surface,
+        template_surface,
+        (
+            Surface(
+                "ollama.system",
+                "examined",
+                f"SYSTEM text recorded ({len(modelfile.system)} chars) and text-checked.",
+            )
+            if modelfile.system is not None
+            else Surface("ollama.system", "absent", "the Modelfile declares no SYSTEM.")
+        ),
+        (
+            Surface(
+                "ollama.messages",
+                "examined",
+                f"{len(modelfile.messages)} MESSAGE instruction(s) recorded and "
+                f"text-checked.",
+            )
+            if modelfile.messages
+            else Surface("ollama.messages", "absent", "the Modelfile declares no MESSAGE.")
+        ),
+        (
+            Surface(
+                "ollama.license",
+                "examined",
+                f"{sum(1 for i in modelfile.instructions if i.name == 'LICENSE')} "
+                f"LICENSE instruction(s) recorded ({len(modelfile.license)} chars); "
+                f"a license is not treated as a model card.",
+            )
+            if modelfile.license is not None
+            else Surface("ollama.license", "absent", "the Modelfile declares no LICENSE.")
+        ),
+        (
+            Surface(
+                "ollama.requires",
+                "examined",
+                f"REQUIRES {modelfile.requires} recorded; compatibility with an "
+                f"installed Ollama was not checked.",
+            )
+            if modelfile.requires is not None
+            else Surface("ollama.requires", "absent", "the Modelfile declares no REQUIRES.")
+        ),
+        (
+            Surface(
+                "ollama.capability",
+                "examined",
+                "CAPABILITY: " + ", ".join(modelfile.capabilities) + ".",
+            )
+            if modelfile.capabilities
+            else Surface(
+                "ollama.capability", "absent", "the Modelfile declares no CAPABILITY.")
+        ),
+        Surface(
+            "metadata",
+            "absent",
+            "a Modelfile has no GGUF metadata; the referenced model was not scanned "
+            "by A4a.",
+        ),
+        Surface(
+            "tokenizer",
+            "absent",
+            "a Modelfile has no tokenizer surface; the referenced model was not "
+            "scanned by A4a.",
+        ),
+        Surface(
+            "structure",
+            "absent",
+            "a Modelfile has no container structure; STR001-STR008 were not applicable.",
+        ),
+        Surface(
+            "manifest",
+            "absent",
+            "manifest comparison is not supported for a Modelfile target in A4a.",
+        ),
+        baseline_surface,
+        policy_surface,
     ])
 
 

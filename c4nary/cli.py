@@ -20,6 +20,7 @@ from dataclasses import dataclass
 from . import __version__
 from .coverage import Coverage, Surface, build_scan_coverage
 from .ingest import TARGETS, classify_target
+from .ollama import OllamaError, load_modelfile, scan_ollama
 from .integrity import (
     write_manifest,
     compare_manifest,
@@ -79,7 +80,7 @@ def main(argv: list[str] | None = None) -> int:
         return args.func(args)
     except (
         GGUFParseError, OSError, json.JSONDecodeError, PolicyError, RemoteError,
-        RepoError,
+        RepoError, OllamaError,
         # Backstop for any recursive walker over attacker-shaped input without its own
         # depth budget. Escaping instead gives CPython's exit 1, which this tool's table
         # defines as "WARN findings present" -- a crash would read as a passing scan.
@@ -106,11 +107,12 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument("--version", action="version", version=f"c4nary {__version__}")
     sub = p.add_subparsers(dest="command")
 
-    sp = sub.add_parser("scan", help="audit a GGUF model or repository")
+    sp = sub.add_parser("scan",
+                        help="audit a GGUF model, repository, or Ollama Modelfile")
     sp.add_argument("file", help="path to a .gguf file, a repository directory "
-                                 "(--as repo), or (with --remote) a Hugging Face "
-                                 "repo id; a GGUF URL is accepted only for a GGUF "
-                                 "target")
+                                 "(--as repo), a local Modelfile (--as ollama), or "
+                                 "(with --remote) a Hugging Face repo id; a GGUF "
+                                 "URL is accepted only for a GGUF target")
     output = sp.add_mutually_exclusive_group()
     output.add_argument("--json", action="store_true", help="emit deterministic JSON")
     output.add_argument("--sarif", action="store_true", help="emit deterministic SARIF 2.1.0")
@@ -146,8 +148,8 @@ def _build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--as", dest="as_type", choices=TARGETS, default=None,
                     help="target type; a local directory defaults to repo")
     sp.add_argument("--ollama", action="store_true",
-                    help="alias for --as ollama: the target is an Ollama reference "
-                         "(e.g. library/qwen3:0.6b), not a file path")
+                    help="alias for --as ollama: the target is a local Ollama "
+                         "Modelfile; model-store references are not implemented yet")
     sp.set_defaults(func=_cmd_scan)
 
     dp = sub.add_parser("diff", help="structural diff of two GGUF files")
@@ -300,6 +302,22 @@ def _scan_repo(args, policy, baseline) -> _ScanResult:
     return _ScanResult(findings, coverage, repo.display, None, None, "repo")
 
 
+def _scan_ollama(args, policy, baseline) -> _ScanResult:
+    """The Modelfile ingest: parse a local Modelfile and run the shared pass."""
+    modelfile = load_modelfile(args.file)
+    findings, coverage = scan_ollama(
+        modelfile,
+        policy=policy,
+        baseline=baseline,
+        policy_requested=getattr(args, "policy", None) is not None,
+        baseline_requested=getattr(args, "baseline", None) is not None,
+    )
+    return _ScanResult(
+        findings, coverage, modelfile.display, modelfile.sha256,
+        modelfile.template_sha256, "ollama",
+    )
+
+
 def _cmd_scan(args) -> int:
     policy = load_policy(getattr(args, "policy", None))
     baseline = load_baseline(getattr(args, "baseline", None))
@@ -311,11 +329,28 @@ def _cmd_scan(args) -> int:
         override=getattr(args, "as_type", None),
     )
     if target == "ollama":
-        print(f"c4nary: error: ollama targets are not implemented in c4nary "
-              f"{__version__}; GGUF scanning is unchanged.", file=sys.stderr)
-        return EXIT_ERROR
-
-    if target == "repo":
+        if args.remote:
+            print("c4nary: error: --remote means Hugging Face and is not supported "
+                  "for an Ollama Modelfile; scan the Modelfile path directly.",
+                  file=sys.stderr)
+            return EXIT_ERROR
+        if getattr(args, "hf_filename", None):
+            print("c4nary: error: --gguf-file (--file) names a single GGUF and has "
+                  "no meaning for an Ollama Modelfile.", file=sys.stderr)
+            return EXIT_ERROR
+        if getattr(args, "manifest", None):
+            print("c4nary: error: --manifest compares a single GGUF and is not "
+                  "supported for an Ollama Modelfile.", file=sys.stderr)
+            return EXIT_ERROR
+        if getattr(args, "bundle", False):
+            print("c4nary: error: --bundle is a GGUF/repository surface and has no "
+                  "meaning for an Ollama Modelfile.", file=sys.stderr)
+            return EXIT_ERROR
+        if getattr(args, "deep_tokenizer", False):
+            print("note: --deep-tokenizer applies to GGUF targets; a Modelfile has "
+                  "no tokenizer surface.", file=sys.stderr)
+        result = _scan_ollama(args, policy, baseline)
+    elif target == "repo":
         if getattr(args, "hf_filename", None):
             print("c4nary: error: --gguf-file (--file) names a single GGUF and has "
                   "no meaning for a repository target.", file=sys.stderr)
@@ -477,7 +512,7 @@ def _render_diff_human(path_a: str, path_b: str, diff: dict) -> str:
 # --------------------------------------------------------------------------- #
 
 _BANNER = (
-    "c4nary - GGUF and repository security auditor\n"
+    "c4nary - GGUF, repository, and Ollama Modelfile security auditor\n"
     "Flags risk indicators; never renders the template or runs the model.\n"
 )
 
@@ -492,6 +527,7 @@ def interactive() -> int:
         ("5", "Diff two .gguf files", _i_diff),
         ("6", "Hash a .gguf / write a manifest", _i_hash),
         ("7", "List the detection rules", _i_rules),
+        ("8", "Scan a local Ollama Modelfile", _i_scan_ollama),
     ]
     while True:
         print("What would you like to do?")
@@ -503,13 +539,13 @@ def interactive() -> int:
             return EXIT_OK
         action = next((fn for key, _, fn in menu if key == choice), None)
         if action is None:
-            print("  (choose 1-7 or q)\n")
+            print("  (choose 1-8 or q)\n")
             continue
         try:
             action()
         except (
             GGUFParseError, OSError, json.JSONDecodeError,
-            PolicyError, RemoteError, RepoError,
+            PolicyError, RemoteError, RepoError, OllamaError,
         ) as exc:
             print(f"  error: {exc}")
         print()
@@ -565,6 +601,12 @@ def _i_scan_repo_remote() -> None:
     repo = _ask("Hugging Face repo id:")
     if repo:
         _cmd_scan(_scan_args(repo, remote=True, as_type="repo"))
+
+
+def _i_scan_ollama() -> None:
+    path = _ask("Path to Modelfile:")
+    if path:
+        _cmd_scan(_scan_args(path, remote=False, as_type="ollama"))
 
 
 def _i_diff() -> None:

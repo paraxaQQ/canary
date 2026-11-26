@@ -102,6 +102,29 @@ _RULES: tuple[Rule, ...] = (
          "content-level template rules were skipped."),
     Rule("TPL101", INFO, "No embedded chat template",
          "The file declares no tokenizer.chat_template metadata key."),
+    # ---- Go text/template (GOT, Ollama Modelfile) ------------------------- #
+    Rule("GOT000", WARN, "Go template failed to parse",
+         "The Modelfile TEMPLATE could not be parsed as Go text/template. Only "
+         "text-level checks ran; control flow and expressions were not analyzed. "
+         "Treat the template as unreviewed, not clean."),
+    Rule("GOT001", FAIL, "Content-gated Go template instruction injection",
+         "A Go template branch keyed on .Prompt or .Messages emits imperative "
+         "instruction text not sourced from the conversation. Renders faithfully "
+         "and executes no code; the injected instruction is the payload."),
+    Rule("GOT002", WARN, "Date/time-gated Go template behavior",
+         "The Go template uses currentDate/yesterdayDate in a test or comparison, "
+         "so its behavior can change by date (a logic-bomb shape)."),
+    Rule("GOT003", WARN, "Go template call of a dynamic function",
+         "The Go template uses the call builtin to invoke a function value from "
+         "the template data. Ollama's template data has no function values; the "
+         "construct is anomalous in a Modelfile."),
+    Rule("GOT004", WARN, "Named Go template composition",
+         "The Go template declares or invokes a named template (define / template "
+         "/ block). The whole TEMPLATE string is audited, but the indirection is "
+         "easy to miss - review the definition."),
+    Rule("GOT005", WARN, "Reconstructed instruction text in a Go template",
+         "printf/print assembles instruction-like text from string arguments, a "
+         "way to evade literal scanning. Manual review."),
     # ---- Metadata sanity (MET) ------------------------------------------- #
     Rule("MET001", WARN, "Embedded URL or IP in metadata",
          "A metadata value contains a URL or IP address."),

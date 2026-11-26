@@ -103,11 +103,11 @@ def test_cli_scans_a_gguf_unchanged(tmp_path, capsys):
     assert '"findings"' in capsys.readouterr().out
 
 
-def test_cli_reports_ollama_unimplemented(tmp_path, capsys):
+def test_cli_rejects_a_gguf_forced_as_ollama(tmp_path, capsys):
     rc = cli.main(["scan", _gguf(tmp_path), "--as", "ollama", "--json"])
     assert rc == cli.EXIT_ERROR
     captured = capsys.readouterr()
-    assert "ollama targets are not implemented" in captured.err
+    assert "is a GGUF file, not an Ollama Modelfile" in captured.err
     assert captured.out == ""
 
 

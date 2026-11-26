@@ -222,7 +222,7 @@ human run, not only visible to someone reading the JSON coverage array.
 - **A3c — safetensors header (implemented).** Top-level safetensors headers →
   TOK002 and tensor-map consistency. Header only; no weight bytes, locally or
   remotely.
-- **A4 — Ollama Modelfile.** Separate target type.
+- **A4 — Ollama Modelfile.** Separate target type; see `docs/A4-SCOPE.md`.
 
 ## 9. Tests and acceptance
 

@@ -19,11 +19,12 @@ GitHub repository is currently `paraxaQQ/canary`; that URL is not being renamed.
 |---|---|---|
 | **GGUF target** | one `.gguf` file, local or remote header | “model” when the distinction matters |
 | **repository target** | a GGUF-less repository, local or on Hugging Face | “repo-native”, “GGUF-less” as nouns |
-| **Ollama target** | an Ollama model reference (not implemented) | implying Ollama works |
+| **Ollama target** | a local Ollama `Modelfile`; model-store references are not implemented yet | calling the referenced model “scanned” |
 
 `--as {gguf,repo,ollama}` selects the target type. A local directory defaults to
 `repo`. A bare Hugging Face repo id defaults to `gguf`; add `--as repo` for a
-repository target. There is no `--repo` flag.
+repository target. A file named `Modelfile` (or one whose first directive is
+`FROM`) classifies as `ollama`. There is no `--repo` flag.
 
 ## Remote and surfaces
 
@@ -35,11 +36,14 @@ repository target. There is no `--repo` flag.
   `--bundle` there is accepted and noted, never required.
 - `--deep-tokenizer` is GGUF-specific: it materializes the vocabulary and runs
   the tokenizer seam. On a repository target it reports `tokenizer.deep` as
-  `partial` (no token-type split) or `skipped` (no usable vocabulary).
+  `partial` (no token-type split) or `skipped` (no usable vocabulary). On an
+  Ollama target it is accepted with a note and has no effect.
 - `--manifest` is **local GGUF only**.
 - `--gguf-file` is the canonical filename flag for a remote GGUF. `--file` is a
   compatibility alias and is hidden from help.
 - `--ollama` is an alias for `--as ollama`.
+- An Ollama target rejects `--remote`, `--bundle`, `--gguf-file`, and
+  `--manifest`: all four describe a GGUF or repository surface.
 
 ## Nightly channel
 
@@ -64,13 +68,14 @@ Do not call the channel “building” in user-facing prose, or the tag a “ver
 
 | Use | Meaning | Legacy alias |
 |---|---|---|
-| `target_type` | `"gguf"`, `"repo"`, or `None` | — |
+| `target_type` | `"gguf"`, `"repo"`, `"ollama"`, or `None` | — |
 | `gguf_filename` | specific GGUF filename for a remote GGUF | `hf_filename` |
 | `manifest_path` | local GGUF manifest | — |
 | `bundle` | GGUF-only repository surfaces | — |
 
 MCP `target_type` and CLI `--as` are the same concept. A repository target
-rejects `gguf_filename`/`hf_filename` and `manifest_path`.
+rejects `gguf_filename`/`hf_filename` and `manifest_path`. An Ollama target
+rejects those plus `remote` and `bundle`.
 
 ## Legacy names kept for compatibility
 
@@ -86,7 +91,7 @@ rejects `gguf_filename`/`hf_filename` and `manifest_path`.
 ```text
 canary                         interactive menu
 canary --version               c4nary <version>
-canary scan <target>           GGUF file, repository directory, or remote target
+canary scan <target>           GGUF file, repository, Modelfile, or remote target
 canary diff a.gguf b.gguf      structural GGUF diff
 canary hash model.gguf         file + template SHA-256; optional manifest
 canary rules                   list rule ids

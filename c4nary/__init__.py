@@ -1,8 +1,9 @@
-"""c4nary — deterministic, offline, read-only security auditor for GGUF files.
+"""c4nary — deterministic, offline, read-only security auditor.
 
-The tool inspects a GGUF model's embedded Jinja2 chat template and metadata for
-known-dangerous constructs (SSTI / sandbox-escape primitives) and can diff a
-model against a known-good reference to detect tampering.
+The tool inspects a GGUF model's embedded Jinja2 chat template and metadata, a
+repository's fixed files, or an Ollama Modelfile for known-dangerous constructs
+(SSTI / sandbox-escape primitives, hidden instructions, structural tampering) and
+can diff a model against a known-good reference to detect tampering.
 
 Hard invariants (see the "Hard invariants" section of README.md, the live contract):
   1. Never render or execute a template or model. AST parse only.
@@ -16,6 +17,6 @@ Hard invariants (see the "Hard invariants" section of README.md, the live contra
 It detects *risk indicators*; it does not prove a model is safe or malicious.
 """
 
-__version__ = "0.3.1+building.5"
+__version__ = "0.4.0+building.6"
 
 __all__ = ["__version__"]

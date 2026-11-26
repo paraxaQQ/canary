@@ -61,13 +61,36 @@ SERVER_INSTRUCTIONS = (
     "never renders the template or runs the model -- and is read-only and "
     "deterministic. Findings are heuristic risk indicators, NOT proof that a "
     "model is safe or malicious; surface them as 'review recommended', not as a "
-    "verdict."
+    "verdict. It also audits a local Ollama Modelfile (set "
+    "target_type='ollama'); its TEMPLATE is Go text/template, parsed structurally "
+    "(never rendered) and checked by the GOT rules, and the referenced model is "
+    "not read."
 )
 
 
 def _summary(findings: list) -> dict[str, int]:
     counts = summarize(findings)
     return {"fail": counts[FAIL], "warn": counts[WARN], "info": counts[INFO]}
+
+
+def _run_scan_ollama(path: str, *, deep_tokenizer: bool) -> dict:
+    """Modelfile target through the shared CLI/MCP pass (``ollama.scan_ollama``)."""
+    from .ollama import load_modelfile, scan_ollama
+
+    modelfile = load_modelfile(path)
+    findings, coverage = scan_ollama(modelfile)
+    return {
+        "file": modelfile.display,
+        "sha256": modelfile.sha256,
+        "template_sha256": modelfile.template_sha256,
+        "findings": findings_to_dicts(findings),
+        "summary": _summary(findings),
+        "verdict": verdict_line(findings),
+        "notes": coverage.notes(),
+        "coverage": coverage.to_dict(),
+        "tool_version": __version__,
+        "rules_bundle_sha256": rules_bundle_sha256(),
+    }
 
 
 def _run_scan_repo(path: str, *, remote: bool, deep_tokenizer: bool) -> dict:
@@ -114,7 +137,8 @@ def run_scan(
             a Hugging Face repo id (``org/name``), an ``hf://org/name`` ref, or a
             direct ``http(s)://`` URL to a ``.gguf``. With ``target_type="repo"``
             it is a local repository directory, or -- with ``remote=True`` -- a
-            Hugging Face repo id / ``hf://org/name``.
+            Hugging Face repo id / ``hf://org/name``. With
+            ``target_type="ollama"`` it is a local ``Modelfile`` path.
         remote: If true, range-fetch only the model's GGUF *header* over the
             network (metadata + template + tensor map, never the weights) instead
             of reading a local file. This is the only network-touching option and
@@ -146,19 +170,24 @@ def run_scan(
             ``"repo"`` audits a repo without a GGUF anchor over the same fixed
             allowlist (configs, tokenizer.json, special-token files, template
             sources, README.md, auto_map Python) and returns the same dict shape,
-            with ``sha256`` and ``template_sha256`` null.
+            with ``sha256`` and ``template_sha256`` null. ``"ollama"`` audits a
+            local Modelfile: ``sha256`` is the Modelfile hash,
+            ``template_sha256`` is the TEMPLATE hash (null when absent), and the
+            referenced model is not read.
 
     Returns:
-        A dict with ``file``, ``sha256`` (null for remote and repo scans),
-        ``template_sha256`` (null for a repo target), ``findings`` (sorted,
+        A dict with ``file``, ``sha256`` (null for remote and repo scans; the
+        Modelfile hash for an Ollama target), ``template_sha256`` (null for a repo
+        target), ``findings`` (sorted,
         deterministic), a ``summary`` count, an honest ``verdict`` line, any
         ``notes`` about skipped checks, a ``coverage`` manifest naming what was
         examined, skipped, absent, truncated or unparseable, plus ``tool_version``
         and ``rules_bundle_sha256`` identifying the ruleset that ran.
     """
-    if target_type not in (None, "gguf", "repo"):
+    if target_type not in (None, "gguf", "repo", "ollama"):
         raise ValueError(
-            f"unknown target_type {target_type!r}; expected 'gguf', 'repo', or None"
+            f"unknown target_type {target_type!r}; expected 'gguf', 'repo', "
+            f"'ollama', or None"
         )
     if gguf_filename is not None:
         if hf_filename is not None and hf_filename != gguf_filename:
@@ -179,6 +208,28 @@ def run_scan(
                 "repository target"
             )
         return _run_scan_repo(path, remote=remote, deep_tokenizer=deep_tokenizer)
+    if target_type == "ollama":
+        if remote:
+            raise ValueError(
+                "remote is the Hugging Face path and is not supported for an "
+                "Ollama Modelfile target"
+            )
+        if manifest_path:
+            raise ValueError(
+                "manifest_path compares a single GGUF and is not supported for an "
+                "Ollama Modelfile target"
+            )
+        if hf_filename:
+            raise ValueError(
+                "gguf_filename names a single GGUF and has no meaning for an "
+                "Ollama Modelfile target"
+            )
+        if bundle:
+            raise ValueError(
+                "bundle is a GGUF/repository surface and has no meaning for an "
+                "Ollama Modelfile target"
+            )
+        return _run_scan_ollama(path, deep_tokenizer=deep_tokenizer)
 
     materialize = _DEEP_TOK_KEYS if (deep_tokenizer or bundle) else None
     if remote:
